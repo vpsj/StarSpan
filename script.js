@@ -821,7 +821,7 @@ form.addEventListener("submit", function(event) {
         `<span class="star-name">${escapeHTML(getStarName(star2))}</span> ` +
         `is ` +
         `<span class="distance">${distance.toLocaleString()} light-years.</span>`;
-   initializeStarMap();
+  initializeStarMap(star1, star2);
 });
 
 
@@ -846,7 +846,7 @@ loadCatalogue();
    3D STAR MAP
    ========================================================= */
 
-function initializeStarMap() {
+function initializeStarMap(star1, star2) {
 
    const container = document.getElementById("star-map");
 
