@@ -848,141 +848,457 @@ loadCatalogue();
 
 function initializeStarMap(star1, star2) {
 
-   const container = document.getElementById("star-map");
+    const container = document.getElementById("star-map");
 
-if (!container) {
-    return;
-}
+    if (!container) {
+        return;
+    }
 
-container.innerHTML = "";
-container.style.display = "block";
+    /*
+     * Remove the previous map and stop its animation loop.
+     */
+    if (container._starMapCleanup) {
+        container._starMapCleanup();
+    }
 
-if (!container) {
-    return;
-}
-
-container.style.display = "block";
-
-const scene = new THREE.Scene();
-function starToPosition(star) {
-
-    const distance = 3.26 * star.dist;
-
-    const ra = star.ra * 15 * Math.PI / 180;
-    const dec = star.dec * Math.PI / 180;
-
-    return new THREE.Vector3(
-        distance * Math.cos(dec) * Math.cos(ra),
-        distance * Math.sin(dec),
-        distance * Math.cos(dec) * Math.sin(ra)
-    );
-}
+    container.innerHTML = "";
+    container.style.display = "block";
 
 
-function addMapStar(position, size, material) {
+    /* =====================================================
+       SCENE
+       ===================================================== */
 
-    const geometry = new THREE.SphereGeometry(
-        size,
-        16,
-        16
-    );
-
-    const mesh = new THREE.Mesh(
-        geometry,
-        material
-    );
-
-    mesh.position.copy(position);
-
-    scene.add(mesh);
-
-    return mesh;
-}
+    const scene = new THREE.Scene();
 
 
-const solPosition = new THREE.Vector3(0, 0, 0);
+    /* =====================================================
+       STAR COORDINATES
+       ===================================================== */
 
-const star1Position = starToPosition(star1);
-const star2Position = starToPosition(star2);
+    function starToPosition(star) {
+
+        const distance = 3.26 * star.dist;
+
+        const ra =
+            star.ra * 15 * Math.PI / 180;
+
+        const dec =
+            star.dec * Math.PI / 180;
+
+        return new THREE.Vector3(
+
+            distance *
+            Math.cos(dec) *
+            Math.cos(ra),
+
+            distance *
+            Math.sin(dec),
+
+            distance *
+            Math.cos(dec) *
+            Math.sin(ra)
+
+        );
+    }
 
 
-const solMaterial = new THREE.MeshBasicMaterial({
-    color: 0xffd966
-});
+    const solPosition =
+        new THREE.Vector3(0, 0, 0);
 
-const starMaterial = new THREE.MeshBasicMaterial({
-    color: 0x87d8ff
-});
+    const star1Position =
+        starToPosition(star1);
+
+    const star2Position =
+        starToPosition(star2);
 
 
-addMapStar(
-    solPosition,
-    0.18,
-    solMaterial
-);
+    /* =====================================================
+       CAMERA
+       ===================================================== */
 
-addMapStar(
-    star1Position,
-    0.14,
-    starMaterial
-);
+    const camera =
+        new THREE.PerspectiveCamera(
+            60,
+            container.clientWidth /
+            container.clientHeight,
+            0.01,
+            10000
+        );
 
-addMapStar(
-    star2Position,
-    0.14,
-    starMaterial
-);
-    const camera = new THREE.PerspectiveCamera(
-        60,
-        container.clientWidth / container.clientHeight,
-        0.1,
-        10000
-    );
 
     const maximumDistance = Math.max(
-    star1Position.length(),
-    star2Position.length()
-);
+        star1Position.length(),
+        star2Position.length()
+    );
 
-camera.position.set(
-    0,
-    0,
-    Math.max(5, maximumDistance * 1.8)
-);
-   const controls = new THREE.OrbitControls(
-    camera,
-    container
-);
 
-controls.enableDamping = true;
-controls.dampingFactor = 0.05;
-controls.enablePan = true;
-controls.enableZoom = true;
-    const renderer = new THREE.WebGLRenderer({
-        antialias: true
-    });
+    camera.position.set(
+        0,
+        0,
+        Math.max(
+            5,
+            maximumDistance * 1.8
+        )
+    );
 
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    /* =====================================================
+       CONTROLS
+       ===================================================== */
+
+    const controls =
+        new THREE.OrbitControls(
+            camera,
+            container
+        );
+
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.enablePan = true;
+    controls.enableZoom = true;
+
+
+    /* =====================================================
+       RENDERER
+       ===================================================== */
+
+    const renderer =
+        new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: false
+        });
+
+    renderer.setPixelRatio(
+        Math.min(
+            window.devicePixelRatio,
+            2
+        )
+    );
 
     renderer.setSize(
         container.clientWidth,
         container.clientHeight
     );
 
-    container.appendChild(renderer.domElement);
+    renderer.setClearColor(
+        0x020307,
+        1
+    );
+
+    container.appendChild(
+        renderer.domElement
+    );
+
+
+    /* =====================================================
+       STAR TEXTURE
+       ===================================================== */
+
+    function createStarTexture() {
+
+        const size = 256;
+
+        const canvas =
+            document.createElement("canvas");
+
+        canvas.width = size;
+        canvas.height = size;
+
+        const ctx =
+            canvas.getContext("2d");
+
+        const gradient =
+            ctx.createRadialGradient(
+                size / 2,
+                size / 2,
+                0,
+                size / 2,
+                size / 2,
+                size / 2
+            );
+
+        gradient.addColorStop(
+            0,
+            "rgba(255,255,255,1)"
+        );
+
+        gradient.addColorStop(
+            0.025,
+            "rgba(255,255,255,1)"
+        );
+
+        gradient.addColorStop(
+            0.08,
+            "rgba(255,245,210,0.95)"
+        );
+
+        gradient.addColorStop(
+            0.20,
+            "rgba(255,220,130,0.45)"
+        );
+
+        gradient.addColorStop(
+            0.40,
+            "rgba(255,180,80,0.15)"
+        );
+
+        gradient.addColorStop(
+            0.70,
+            "rgba(255,140,50,0.04)"
+        );
+
+        gradient.addColorStop(
+            1,
+            "rgba(255,120,30,0)"
+        );
+
+        ctx.fillStyle = gradient;
+
+        ctx.fillRect(
+            0,
+            0,
+            size,
+            size
+        );
+
+
+        /*
+         * Tiny diffraction-style cross.
+         */
+        const center = size / 2;
+
+        const crossGradient =
+            ctx.createLinearGradient(
+                center - 80,
+                center,
+                center + 80,
+                center
+            );
+
+        crossGradient.addColorStop(
+            0,
+            "rgba(255,255,255,0)"
+        );
+
+        crossGradient.addColorStop(
+            0.5,
+            "rgba(255,255,255,0.22)"
+        );
+
+        crossGradient.addColorStop(
+            1,
+            "rgba(255,255,255,0)"
+        );
+
+        ctx.fillStyle = crossGradient;
+
+        ctx.fillRect(
+            center - 80,
+            center - 1,
+            160,
+            2
+        );
+
+        ctx.save();
+
+        ctx.translate(
+            center,
+            center
+        );
+
+        ctx.rotate(
+            Math.PI / 2
+        );
+
+        ctx.fillStyle = crossGradient;
+
+        ctx.fillRect(
+            -80,
+            -1,
+            160,
+            2
+        );
+
+        ctx.restore();
+
+
+        return new THREE.CanvasTexture(
+            canvas
+        );
+    }
+
+
+    const starTexture =
+        createStarTexture();
+
+
+    /* =====================================================
+       ADD STAR
+       ===================================================== */
+
+    const animatedStars = [];
+
+
+    function addStar(
+        position,
+        distance,
+        isSol
+    ) {
+
+        const material =
+            new THREE.SpriteMaterial({
+                map: starTexture,
+                transparent: true,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending
+            });
+
+
+        const sprite =
+            new THREE.Sprite(material);
+
+
+        /*
+         * Nearby stars appear larger.
+         * Distant stars become smaller.
+         *
+         * Queried stars are deliberately prominent.
+         */
+        const baseSize =
+            isSol
+                ? 0.42
+                : Math.max(
+                    0.12,
+                    0.30 /
+                    Math.sqrt(
+                        Math.max(
+                            distance,
+                            1
+                        )
+                    )
+                );
+
+
+        sprite.scale.set(
+            baseSize,
+            baseSize,
+            1
+        );
+
+
+        sprite.position.copy(
+            position
+        );
+
+
+        scene.add(sprite);
+
+
+        animatedStars.push({
+            sprite: sprite,
+            baseSize: baseSize,
+            phase: Math.random() * Math.PI * 2,
+            speed: 0.7 + Math.random() * 0.6
+        });
+
+
+        return sprite;
+    }
+
+
+    addStar(
+        solPosition,
+        0,
+        true
+    );
+
+
+    addStar(
+        star1Position,
+        star1Position.length(),
+        false
+    );
+
+
+    addStar(
+        star2Position,
+        star2Position.length(),
+        false
+    );
+
+
+    /* =====================================================
+       ANIMATION
+       ===================================================== */
+
+    let animationFrame;
+
+    const clock =
+        new THREE.Clock();
 
 
     function animate() {
 
-        requestAnimationFrame(animate);
+        animationFrame =
+            requestAnimationFrame(
+                animate
+            );
+
+
+        const elapsed =
+            clock.getElapsedTime();
+
+
+        animatedStars.forEach(
+            function(star) {
+
+                const pulse =
+                    1 +
+                    Math.sin(
+                        elapsed *
+                        star.speed +
+                        star.phase
+                    ) *
+                    0.045;
+
+
+                star.sprite.scale.set(
+                    star.baseSize * pulse,
+                    star.baseSize * pulse,
+                    1
+                );
+
+
+                star.sprite.material.opacity =
+                    0.90 +
+                    Math.sin(
+                        elapsed *
+                        star.speed +
+                        star.phase
+                    ) *
+                    0.08;
+            }
+        );
+
+
         controls.update();
-        renderer.render(scene, camera);
+
+        renderer.render(
+            scene,
+            camera
+        );
     }
+
 
     animate();
 
 
-    window.addEventListener("resize", function() {
+    /* =====================================================
+       RESIZE
+       ===================================================== */
+
+    function handleResize() {
 
         camera.aspect =
             container.clientWidth /
@@ -994,7 +1310,35 @@ controls.enableZoom = true;
             container.clientWidth,
             container.clientHeight
         );
+    }
 
-    });
 
+    window.addEventListener(
+        "resize",
+        handleResize
+    );
+
+
+    /* =====================================================
+       CLEANUP
+       ===================================================== */
+
+    container._starMapCleanup =
+        function() {
+
+            cancelAnimationFrame(
+                animationFrame
+            );
+
+            window.removeEventListener(
+                "resize",
+                handleResize
+            );
+
+            controls.dispose();
+
+            starTexture.dispose();
+
+            renderer.dispose();
+        };
 }
