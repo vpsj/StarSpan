@@ -918,29 +918,57 @@ function initializeStarMap(star1, star2) {
        ===================================================== */
 
     const camera =
-        new THREE.PerspectiveCamera(
-            60,
-            container.clientWidth /
-            container.clientHeight,
-            0.01,
-            10000
-        );
-
-
-    const maximumDistance = Math.max(
-        star1Position.length(),
-        star2Position.length()
+    new THREE.PerspectiveCamera(
+        60,
+        container.clientWidth /
+        container.clientHeight,
+        0.01,
+        100000
     );
 
 
-    camera.position.set(
-        0,
-        0,
-        Math.max(
-            5,
-            maximumDistance * 1.8
-        )
-    );
+/*
+ * Find the centre of the three relevant stars.
+ */
+const mapCenter =
+    new THREE.Vector3()
+        .add(solPosition)
+        .add(star1Position)
+        .add(star2Position)
+        .multiplyScalar(1 / 3);
+
+
+/*
+ * Find how spread out the three stars are.
+ */
+const mapRadius = Math.max(
+    solPosition.distanceTo(mapCenter),
+    star1Position.distanceTo(mapCenter),
+    star2Position.distanceTo(mapCenter)
+);
+
+
+/*
+ * Place the camera far enough away to see
+ * the entire configuration.
+ */
+const cameraDistance =
+    Math.max(5, mapRadius * 2.8);
+
+
+camera.position.set(
+    mapCenter.x,
+    mapCenter.y,
+    mapCenter.z + cameraDistance
+);
+
+
+/*
+ * Orbit around the centre of the actual
+ * three-star configuration rather than Sol.
+ */
+controls.target.copy(mapCenter);
+controls.update();
 
 
     /* =====================================================
