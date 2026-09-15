@@ -1329,10 +1329,7 @@ function initializeStarMap(star1, star2) {
             data
         );
 
-        importantStars.push(
-            data
-        );
-
+      
 
         return sprite;
     }
