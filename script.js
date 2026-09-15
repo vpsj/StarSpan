@@ -1552,7 +1552,7 @@ function initializeStarMap(star1, star2) {
              */
             const size =
                 0.24 +
-                Math.random() * 0.06;
+                Math.random() * 0.12;
 
 
             sprite.scale.set(
