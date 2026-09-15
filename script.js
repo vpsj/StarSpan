@@ -1596,385 +1596,74 @@ function initializeStarMap(star1, star2) {
         }
     );
 
+/* =====================================================
+   360° MILKY WAY PANORAMA
+   ===================================================== */
 
-    /* =====================================================
-       PROCEDURAL BACKGROUND STARFIELD
-       ===================================================== */
+/*
+ * The panorama is an equirectangular 360° image.
+ * Three.js renders it as an infinite background,
+ * so it does not need any geometry or thousands
+ * of simulated background stars.
+ */
 
-    /*
-     * Large spherical field surrounding the local
-     * star system.
-     *
-     * These are decorative stars rather than catalogue
-     * objects, so they are not given names or interaction.
-     */
-    const backdropRadius =
-        Math.max(
-            500,
-            mapRadius * 6
-        );
+let panoramaTexture = null;
+let mapActive = true;
 
+const panoramaLoader =
+    new THREE.TextureLoader();
 
-    const backgroundStarCount = 2200;
+panoramaLoader.load(
+    "Milky%20way%20panaroma.jpg",
 
-    const backgroundGeometry =
-        new THREE.BufferGeometry();
+    function(texture) {
 
+        /*
+         * The image is a normal JPG, so treat it
+         * as an sRGB colour texture.
+         */
+        texture.encoding =
+            THREE.sRGBEncoding;
 
-    const backgroundPositions = [];
-
-    const backgroundColors = [];
-
-
-    /*
-     * A few subtle stellar colour groups.
-     *
-     * Most stars remain white/blue-white, with a small
-     * fraction appearing warmer.
-     */
-    const backgroundColourOptions = [
-
-        new THREE.Color(0xffffff),
-        new THREE.Color(0xddeaff),
-        new THREE.Color(0xc8dcff),
-        new THREE.Color(0xfff2d2),
-        new THREE.Color(0xffdfad)
-
-    ];
-
-
-    for (
-        let i = 0;
-        i < backgroundStarCount;
-        i++
-    ) {
-
-        const u =
-            Math.random() * 2 - 1;
-
-        const theta =
-            Math.random() *
-            Math.PI *
-            2;
+        /*
+         * Tell Three.js that this is a 360°
+         * equirectangular panorama.
+         */
+        texture.mapping =
+            THREE.EquirectangularReflectionMapping;
 
 
         /*
-         * Avoid putting all stars at exactly the
-         * same radius. Cube-root distribution gives
-         * a natural-looking 3D volume.
+         * The map may have been replaced before
+         * the image finished loading.
          */
-        const radius =
-            backdropRadius *
-            Math.cbrt(
-                0.15 +
-                Math.random() * 0.85
-            );
+        if (!mapActive) {
+
+            texture.dispose();
+
+            return;
+        }
 
 
-        const horizontal =
-            Math.sqrt(
-                1 -
-                u * u
-            );
+        panoramaTexture =
+            texture;
 
+        scene.background =
+            panoramaTexture;
 
-        const x =
-            radius *
-            horizontal *
-            Math.cos(theta);
+    },
 
-        const y =
-            radius * u;
+    undefined,
 
-        const z =
-            radius *
-            horizontal *
-            Math.sin(theta);
+    function(error) {
 
-
-        backgroundPositions.push(
-            x,
-            y,
-            z
-        );
-
-
-        /*
-         * Mostly blue/white stars with occasional
-         * warmer stars.
-         */
-        const colour =
-            backgroundColourOptions[
-                Math.floor(
-                    Math.random() *
-                    backgroundColourOptions.length
-                )
-            ];
-
-
-        backgroundColors.push(
-            colour.r,
-            colour.g,
-            colour.b
+        console.error(
+            "Failed to load Milky Way panorama:",
+            error
         );
 
     }
-
-
-    backgroundGeometry.setAttribute(
-        "position",
-        new THREE.Float32BufferAttribute(
-            backgroundPositions,
-            3
-        )
-    );
-
-
-    backgroundGeometry.setAttribute(
-        "color",
-        new THREE.Float32BufferAttribute(
-            backgroundColors,
-            3
-        )
-    );
-
-
-    const backgroundMaterial =
-        new THREE.PointsMaterial({
-
-            map:
-                starTexture,
-
-            size:
-                0.045,
-
-            vertexColors:
-                true,
-
-            transparent:
-                true,
-
-            opacity:
-                0.48,
-
-            depthWrite:
-                false,
-
-            blending:
-                THREE.AdditiveBlending
-
-        });
-
-
-    const backgroundStarField =
-        new THREE.Points(
-            backgroundGeometry,
-            backgroundMaterial
-        );
-
-
-    scene.add(
-        backgroundStarField
-    );
-
-
-    /* =====================================================
-       MILKY WAY BAND
-       ===================================================== */
-
-    /*
-     * A broad, diffuse stellar disk.
-     *
-     * This is deliberately subtle: it should resemble
-     * a distant galactic plane rather than a flat
-     * artificial stripe.
-     */
-    const milkyWayGeometry =
-        new THREE.BufferGeometry();
-
-
-    const milkyWayPositions = [];
-
-    const milkyWayColors = [];
-
-
-    const milkyWayCount = 5000;
-
-
-    for (
-        let i = 0;
-        i < milkyWayCount;
-        i++
-    ) {
-
-        const angle =
-            Math.random() *
-            Math.PI *
-            2;
-
-
-        /*
-         * Spread stars across the galactic disk,
-         * with more density toward the centre.
-         */
-        const radius =
-            backdropRadius *
-            Math.pow(
-                Math.random(),
-                0.72
-            );
-
-
-        /*
-         * The thickness increases slightly
-         * farther from the centre.
-         */
-        const thickness =
-            backdropRadius *
-            (
-                0.018 +
-                Math.random() * 0.075
-            );
-
-
-        const x =
-            radius *
-            Math.cos(angle);
-
-        const z =
-            radius *
-            Math.sin(angle);
-
-
-        /*
-         * Slight curved structure prevents the band
-         * from looking like a perfectly flat sheet.
-         */
-        const y =
-            (
-                Math.random() -
-                0.5
-            ) *
-            thickness
-            +
-            Math.sin(angle * 3) *
-            backdropRadius *
-            0.012;
-
-
-        /*
-         * Tilt the galactic plane.
-         */
-        const tilt =
-            0.42;
-
-
-        const tiltedY =
-            y *
-                Math.cos(tilt) -
-            z *
-                Math.sin(tilt);
-
-
-        const tiltedZ =
-            y *
-                Math.sin(tilt) +
-            z *
-                Math.cos(tilt);
-
-
-        milkyWayPositions.push(
-
-            x,
-
-            tiltedY,
-
-            tiltedZ
-
-        );
-
-
-        /*
-         * Mostly cool white/blue light, with a tiny
-         * amount of warmer stellar colour.
-         */
-        const brightness =
-            0.65 +
-            Math.random() * 0.35;
-
-
-        milkyWayColors.push(
-
-            brightness,
-
-            brightness *
-                (0.91 +
-                Math.random() * 0.09),
-
-            brightness *
-                (0.96 +
-                Math.random() * 0.04)
-
-        );
-
-    }
-
-
-    milkyWayGeometry.setAttribute(
-        "position",
-        new THREE.Float32BufferAttribute(
-            milkyWayPositions,
-            3
-        )
-    );
-
-
-    milkyWayGeometry.setAttribute(
-        "color",
-        new THREE.Float32BufferAttribute(
-            milkyWayColors,
-            3
-        )
-    );
-
-
-    const milkyWayMaterial =
-        new THREE.PointsMaterial({
-
-            map:
-                starTexture,
-
-            size:
-                0.075,
-
-            vertexColors:
-                true,
-
-            transparent:
-                true,
-
-            opacity:
-                0.18,
-
-            depthWrite:
-                false,
-
-            blending:
-                THREE.AdditiveBlending
-
-        });
-
-
-    const milkyWay =
-        new THREE.Points(
-            milkyWayGeometry,
-            milkyWayMaterial
-        );
-
-
-    scene.add(
-        milkyWay
-    );
+);
 
 
     /* =====================================================
@@ -2868,7 +2557,6 @@ renderer.domElement.addEventListener(
         handleResize
     );
 
-
     /* =====================================================
        CLEANUP
        ===================================================== */
@@ -2880,44 +2568,38 @@ renderer.domElement.addEventListener(
                 animationFrame
             );
 
-
             window.removeEventListener(
                 "resize",
                 handleResize
             );
 
+            renderer.domElement.removeEventListener(
+                "pointermove",
+                handlePointerMove
+            );
 
-            renderer.domElement
-    .removeEventListener(
-        "pointermove",
-        handlePointerMove
-    );
+            renderer.domElement.removeEventListener(
+                "pointerleave",
+                handlePointerLeave
+            );
 
-
-renderer.domElement
-    .removeEventListener(
-        "pointerleave",
-        handlePointerLeave
-    );
-
-
-renderer.domElement
-    .removeEventListener(
-        "pointerdown",
-        handlePointerDown
-    );
-
+            renderer.domElement.removeEventListener(
+                "pointerdown",
+                handlePointerDown
+            );
 
             controls.dispose();
 
+            mapActive = false;
 
-            starTexture.dispose();
+            scene.background = null;
 
+            if (panoramaTexture) {
 
-            milkyWayGeometry.dispose();
+                panoramaTexture.dispose();
 
-            milkyWayMaterial.dispose();
-
+                panoramaTexture = null;
+            }
 
             triangleLines.forEach(
                 data => {
@@ -2928,39 +2610,29 @@ renderer.domElement
                 }
             );
 
-
             backgroundStars.forEach(
                 entry => {
 
-                    entry.sprite
-                        .material
-                        .dispose();
+                    entry.sprite.material.dispose();
 
                 }
             );
-
-
-           backgroundGeometry.dispose();
-
-           backgroundMaterial.dispose();
-
-
-            renderer.dispose();
-
 
             importantLabels.forEach(
                 data =>
                     data.label.remove()
             );
 
-
             backgroundLabels.forEach(
                 data =>
                     data.label.remove()
             );
 
-
             tooltip.remove();
+
+            starTexture.dispose();
+
+            renderer.dispose();
 
         };
 
