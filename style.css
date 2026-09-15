@@ -517,3 +517,23 @@ body {
     overflow: hidden;
     background: #05070b;
 }
+/* =========================================================
+   STAR MAP TOOLTIP
+   ========================================================= */
+
+.star-map-tooltip {
+    position: absolute;
+    z-index: 20;
+    pointer-events: none;
+    display: none;
+    padding: 8px 11px;
+    border-radius: 5px;
+    background: rgba(8, 11, 17, 0.92);
+    border: 1px solid rgba(135, 216, 255, 0.35);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+    color: #ffffff;
+    font-size: 13px;
+    line-height: 1.4;
+    white-space: nowrap;
+    transform: translate(12px, 12px);
+}
