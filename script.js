@@ -839,3 +839,68 @@ setupAutocomplete(
 );
 
 loadCatalogue();
+
+ 
+/* =========================================================
+   3D STAR MAP
+   ========================================================= */
+
+function initializeStarMap() {
+
+    const container = document.getElementById("star-map");
+
+    if (!container) {
+        return;
+    }
+
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(
+        60,
+        container.clientWidth / container.clientHeight,
+        0.1,
+        10000
+    );
+
+    camera.position.set(0, 0, 10);
+
+    const renderer = new THREE.WebGLRenderer({
+        antialias: true
+    });
+
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    renderer.setSize(
+        container.clientWidth,
+        container.clientHeight
+    );
+
+    container.appendChild(renderer.domElement);
+
+
+    function animate() {
+
+        requestAnimationFrame(animate);
+
+        renderer.render(scene, camera);
+    }
+
+    animate();
+
+
+    window.addEventListener("resize", function() {
+
+        camera.aspect =
+            container.clientWidth /
+            container.clientHeight;
+
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(
+            container.clientWidth,
+            container.clientHeight
+        );
+
+    });
+
+}
