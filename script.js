@@ -568,16 +568,19 @@ function setupAutocomplete(inputId, suggestionsId) {
 
        else if (event.key === "Tab") {
 
-    /*
-     * Tab cycles through autocomplete suggestions instead
-     * of immediately leaving the input field.
-     */
     if (items.length > 0) {
 
         event.preventDefault();
 
-        selectedIndex =
-            (selectedIndex + 1) % items.length;
+        if (event.shiftKey) {
+            selectedIndex =
+                selectedIndex <= 0
+                    ? items.length - 1
+                    : selectedIndex - 1;
+        } else {
+            selectedIndex =
+                (selectedIndex + 1) % items.length;
+        }
 
         updateHighlight();
     }
