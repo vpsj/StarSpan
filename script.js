@@ -854,8 +854,9 @@ function initializeStarMap(star1, star2) {
         return;
     }
 
+
     /*
-     * Remove the previous map and stop its animation loop.
+     * Remove the previous map.
      */
     if (container._starMapCleanup) {
         container._starMapCleanup();
@@ -918,55 +919,42 @@ function initializeStarMap(star1, star2) {
        ===================================================== */
 
     const camera =
-    new THREE.PerspectiveCamera(
-        60,
-        container.clientWidth /
-        container.clientHeight,
-        0.01,
-        100000
+        new THREE.PerspectiveCamera(
+            60,
+            container.clientWidth /
+            container.clientHeight,
+            0.01,
+            100000
+        );
+
+
+    const mapCenter =
+        new THREE.Vector3()
+            .add(solPosition)
+            .add(star1Position)
+            .add(star2Position)
+            .multiplyScalar(1 / 3);
+
+
+    const mapRadius = Math.max(
+        solPosition.distanceTo(mapCenter),
+        star1Position.distanceTo(mapCenter),
+        star2Position.distanceTo(mapCenter)
     );
 
 
-/*
- * Find the centre of the three relevant stars.
- */
-const mapCenter =
-    new THREE.Vector3()
-        .add(solPosition)
-        .add(star1Position)
-        .add(star2Position)
-        .multiplyScalar(1 / 3);
+    const cameraDistance =
+        Math.max(
+            5,
+            mapRadius * 2.8
+        );
 
 
-/*
- * Find how spread out the three stars are.
- */
-const mapRadius = Math.max(
-    solPosition.distanceTo(mapCenter),
-    star1Position.distanceTo(mapCenter),
-    star2Position.distanceTo(mapCenter)
-);
-
-
-/*
- * Place the camera far enough away to see
- * the entire configuration.
- */
-const cameraDistance =
-    Math.max(5, mapRadius * 2.8);
-
-
-camera.position.set(
-    mapCenter.x,
-    mapCenter.y,
-    mapCenter.z + cameraDistance
-);
-
-
-/*
- * Orbit around the centre of the actual
- * three-star configuration rather than Sol.
- */
+    camera.position.set(
+        mapCenter.x,
+        mapCenter.y,
+        mapCenter.z + cameraDistance
+    );
 
 
     /* =====================================================
@@ -983,8 +971,10 @@ camera.position.set(
     controls.dampingFactor = 0.05;
     controls.enablePan = true;
     controls.enableZoom = true;
+
     controls.target.copy(mapCenter);
     controls.update();
+
 
     /* =====================================================
        RENDERER
@@ -1091,7 +1081,7 @@ camera.position.set(
 
 
         /*
-         * Tiny diffraction-style cross.
+         * Very subtle diffraction cross.
          */
         const center = size / 2;
 
@@ -1161,16 +1151,105 @@ camera.position.set(
 
 
     /* =====================================================
-       ADD STAR
+       TOOLTIP
+       ===================================================== */
+
+    const tooltip =
+        document.createElement("div");
+
+    tooltip.className =
+        "star-map-tooltip";
+
+    tooltip.style.display = "none";
+
+    container.appendChild(
+        tooltip
+    );
+
+
+    function showTooltip(
+        title,
+        detail
+    ) {
+
+        tooltip.innerHTML =
+            `<strong>${escapeHTML(title)}</strong>` +
+            (detail
+                ? `<br>${escapeHTML(detail)}`
+                : "");
+
+        tooltip.style.display =
+            "block";
+    }
+
+
+    function moveTooltip(
+        x,
+        y
+    ) {
+
+        tooltip.style.left =
+            `${x}px`;
+
+        tooltip.style.top =
+            `${y}px`;
+    }
+
+
+    function hideTooltip() {
+
+        tooltip.style.display =
+            "none";
+    }
+
+
+    /* =====================================================
+       STAR COLOURS
+       ===================================================== */
+
+    /*
+     * Sol gets a warm solar colour.
+     *
+     * Other stars receive a subtle random colour
+     * variation rather than all looking identical.
+     */
+    function randomStarColour() {
+
+        const colours = [
+
+            0xeaf3ff,
+            0xdce9ff,
+            0xc8ddff,
+            0xfff2d2,
+            0xffdfad,
+            0xffc58a,
+            0xbfd8ff
+
+        ];
+
+        return colours[
+            Math.floor(
+                Math.random() *
+                colours.length
+            )
+        ];
+    }
+
+
+    /* =====================================================
+       QUERIED STARS
        ===================================================== */
 
     const animatedStars = [];
+
+    const importantStars = [];
 
 
     function addStar(
         position,
         distance,
-        isSol
+        isSol,
+        name
     ) {
 
         const material =
@@ -1178,7 +1257,10 @@ camera.position.set(
                 map: starTexture,
                 transparent: true,
                 depthWrite: false,
-                blending: THREE.AdditiveBlending
+                blending: THREE.AdditiveBlending,
+                color: isSol
+                    ? 0xfff4c2
+                    : randomStarColour()
             });
 
 
@@ -1187,24 +1269,22 @@ camera.position.set(
 
 
         /*
-         * Nearby stars appear larger.
-         * Distant stars become smaller.
-         *
-         * Queried stars are deliberately prominent.
+         * Minimum visual size is maintained
+         * later in the animation loop.
          */
-       const baseSize =
-    isSol
-        ? 0.42
-        : Math.max(
-            0.30,
-            1.5 /
-            Math.sqrt(
-                Math.max(
-                    distance,
-                    1
-                )
-            )
-        );
+        const baseSize =
+            isSol
+                ? 0.42
+                : Math.max(
+                    0.30,
+                    1.5 /
+                    Math.sqrt(
+                        Math.max(
+                            distance,
+                            1
+                        )
+                    )
+                );
 
 
         sprite.scale.set(
@@ -1222,194 +1302,1286 @@ camera.position.set(
         scene.add(sprite);
 
 
-        animatedStars.push({
+        const data = {
+
             sprite: sprite,
+
             baseSize: baseSize,
-            phase: Math.random() * Math.PI * 2,
-            speed: 0.7 + Math.random() * 0.6
-        });
+
+            phase:
+                Math.random() *
+                Math.PI *
+                2,
+
+            speed:
+                0.7 +
+                Math.random() *
+                0.6,
+
+            name: name,
+
+            isSol: isSol
+
+        };
+
+
+        animatedStars.push(
+            data
+        );
+
+        importantStars.push(
+            data
+        );
 
 
         return sprite;
     }
 
 
-    addStar(
-        solPosition,
-        0,
-        true
-    );
-
-
-    addStar(
-        star1Position,
-        star1Position.length(),
-        false
-    );
-
-
-    addStar(
-        star2Position,
-        star2Position.length(),
-        false
-    );
-
-/* =====================================================
-   TRIANGLE
-   ===================================================== */
-
-const triangleMaterial =
-    new THREE.LineBasicMaterial({
-        color: 0x8fc9e8,
-        transparent: true,
-        opacity: 0.22
-    });
-
-
-function createTriangleLine(start, end) {
-
-    const geometry =
-        new THREE.BufferGeometry()
-            .setFromPoints([
-                start,
-                end
-            ]);
-
-    const line =
-        new THREE.Line(
-            geometry,
-            triangleMaterial
+    const solSprite =
+        addStar(
+            solPosition,
+            0,
+            true,
+            "Sol"
         );
 
-    scene.add(line);
 
-    return line;
-}
-
-
-/*
- * Sol → Star 1
- */
-createTriangleLine(
-    solPosition,
-    star1Position
-);
+    const star1Sprite =
+        addStar(
+            star1Position,
+            star1Position.length(),
+            false,
+            getStarName(star1)
+        );
 
 
-/*
- * Sol → Star 2
- */
-createTriangleLine(
-    solPosition,
-    star2Position
-);
+    const star2Sprite =
+        addStar(
+            star2Position,
+            star2Position.length(),
+            false,
+            getStarName(star2)
+        );
 
 
-/*
- * Star 1 → Star 2
- */
-createTriangleLine(
-    star1Position,
-    star2Position
-);
+    /* =====================================================
+       TRIANGLE
+       ===================================================== */
 
-/* =====================================================
-   BACKGROUND STARS
-   ===================================================== */
-
-const backgroundStars = [];
+    const triangleLines = [];
 
 
-/*
- * Use the nearest catalogue stars to Sol.
- * The queried stars themselves are excluded.
- */
-const queriedStars = new Set([
-    star1,
-    star2
-]);
+    function createTriangleLine(
+        start,
+        end,
+        name1,
+        name2,
+        distance
+    ) {
+
+        const geometry =
+            new THREE.BufferGeometry()
+                .setFromPoints([
+                    start,
+                    end
+                ]);
 
 
-const nearbyStars = stars
-    .filter(star =>
-        !queriedStars.has(star)
-    )
-    .map(star => {
-
-        const position =
-            starToPosition(star);
-
-        return {
-            star: star,
-            position: position,
-            distance: position.length()
-        };
-    })
-    .filter(entry =>
-        Number.isFinite(entry.distance)
-    )
-    .sort((a, b) =>
-        a.distance - b.distance
-    )
-    .slice(0, 50);
+        const material =
+            new THREE.LineBasicMaterial({
+                color: 0x8fc9e8,
+                transparent: true,
+                opacity: 0.035
+            });
 
 
-/*
- * Background stars are intentionally much more subtle
- * than the three stars being investigated.
- */
-nearbyStars.forEach(entry => {
+        const line =
+            new THREE.Line(
+                geometry,
+                material
+            );
 
-    const material =
-        new THREE.SpriteMaterial({
-            map: starTexture,
-            transparent: true,
-            depthWrite: false,
-            opacity: 0.35,
-            blending: THREE.AdditiveBlending
+
+        scene.add(line);
+
+
+        triangleLines.push({
+
+            line: line,
+
+            start: start,
+
+            end: end,
+
+            name1: name1,
+
+            name2: name2,
+
+            distance: distance,
+
+            baseOpacity: 0.035
+
         });
 
 
-    const sprite =
-        new THREE.Sprite(material);
+        return line;
+    }
 
 
-    const size =
-        Math.max(
-            0.035,
-            0.12 /
-            Math.sqrt(
-                Math.max(
-                    entry.distance,
-                    1
+   createTriangleLine(
+    solPosition,
+    star1Position,
+    "Sol",
+    getStarName(star1),
+    solPosition.distanceTo(
+        star1Position
+    )
+);
+
+
+
+    createTriangleLine(
+        solPosition,
+        star2Position,
+        "Sol",
+        getStarName(star2),
+        solPosition.distanceTo(
+            star2Position
+        )
+    );
+
+
+    createTriangleLine(
+        star1Position,
+        star2Position,
+        getStarName(star1),
+        getStarName(star2),
+        star1Position.distanceTo(
+            star2Position
+        )
+    );
+
+
+    /* =====================================================
+       BACKGROUND REAL STARS
+       ===================================================== */
+
+    const backgroundStars = [];
+
+
+    const queriedStars =
+        new Set([
+            star1,
+            star2
+        ]);
+
+
+    const nearbyStars =
+        stars
+            .filter(star =>
+                !queriedStars.has(star)
+            )
+            .map(star => {
+
+                const position =
+                    starToPosition(star);
+
+                return {
+
+                    star: star,
+
+                    position: position,
+
+                    distance:
+                        position.length()
+
+                };
+            })
+            .filter(entry =>
+                Number.isFinite(
+                    entry.distance
                 )
             )
+            .sort((a, b) =>
+                a.distance -
+                b.distance
+            )
+            .slice(0, 50);
+
+
+    nearbyStars.forEach(
+        entry => {
+
+            const material =
+                new THREE.SpriteMaterial({
+                    map: starTexture,
+                    transparent: true,
+                    depthWrite: false,
+                    opacity:
+                        0.28 +
+                        Math.random() * 0.22,
+                    blending:
+                        THREE.AdditiveBlending,
+                    color:
+                        randomStarColour()
+                });
+
+
+            const sprite =
+                new THREE.Sprite(
+                    material
+                );
+
+
+            const size =
+                Math.max(
+                    0.08,
+                    0.18 /
+                    Math.sqrt(
+                        Math.max(
+                            entry.distance,
+                            1
+                        )
+                    )
+                );
+
+
+            sprite.scale.set(
+                size,
+                size,
+                1
+            );
+
+
+            sprite.position.copy(
+                entry.position
+            );
+
+
+            scene.add(sprite);
+
+
+            backgroundStars.push({
+
+                star: entry.star,
+
+                sprite: sprite,
+
+                position: entry.position,
+
+                distance:
+                    entry.distance,
+
+                name:
+                    getStarName(
+                        entry.star
+                    )
+
+            });
+
+        }
+    );
+
+
+    /* =====================================================
+       PROCEDURAL BACKGROUND STARFIELD
+       ===================================================== */
+
+    const randomBackgroundStars = [];
+
+
+    const backdropRadius =
+        Math.max(
+            500,
+            mapRadius * 5
         );
 
 
-    sprite.scale.set(
-        size,
-        size,
-        1
+    for (
+        let i = 0;
+        i < 900;
+        i++
+    ) {
+
+        const u =
+            Math.random() * 2 - 1;
+
+        const theta =
+            Math.random() *
+            Math.PI *
+            2;
+
+        const radius =
+            backdropRadius *
+            (
+                0.55 +
+                Math.random() *
+                0.45
+            );
+
+
+        const horizontal =
+            Math.sqrt(
+                1 -
+                u * u
+            );
+
+
+        const position =
+            new THREE.Vector3(
+
+                radius *
+                horizontal *
+                Math.cos(theta),
+
+                radius * u,
+
+                radius *
+                horizontal *
+                Math.sin(theta)
+
+            );
+
+
+        /*
+         * Random stars are small and atmospheric.
+         */
+        const material =
+            new THREE.SpriteMaterial({
+
+                map: starTexture,
+
+                transparent: true,
+
+                depthWrite: false,
+
+                opacity:
+                    0.08 +
+                    Math.random() *
+                    0.18,
+
+                blending:
+                    THREE.AdditiveBlending,
+
+                color:
+                    randomStarColour()
+
+            });
+
+
+        const sprite =
+            new THREE.Sprite(
+                material
+            );
+
+
+        const size =
+            0.025 +
+            Math.random() *
+            0.045;
+
+
+        sprite.scale.set(
+            size,
+            size,
+            1
+        );
+
+
+        sprite.position.copy(
+            position
+        );
+
+
+        scene.add(sprite);
+
+
+        randomBackgroundStars.push(
+            sprite
+        );
+
+    }
+
+
+    /* =====================================================
+       MILKY WAY BAND
+       ===================================================== */
+
+    const milkyWayGeometry =
+        new THREE.BufferGeometry();
+
+    const milkyWayPositions = [];
+
+
+    /*
+     * Create a broad, diffuse band of stars
+     * through the background.
+     */
+    for (
+        let i = 0;
+        i < 1800;
+        i++
+    ) {
+
+        const radius =
+            backdropRadius *
+            (
+                0.35 +
+                Math.random() *
+                0.65
+            );
+
+
+        const angle =
+            Math.random() *
+            Math.PI *
+            2;
+
+
+        /*
+         * Concentrate most stars around a
+         * tilted plane.
+         */
+        const width =
+            (
+                Math.random() -
+                0.5
+            ) *
+            backdropRadius *
+            0.22;
+
+
+        const x =
+            radius *
+            Math.cos(angle);
+
+        const z =
+            radius *
+            Math.sin(angle);
+
+
+        const y =
+            width +
+            Math.sin(angle * 2) *
+            backdropRadius *
+            0.04;
+
+
+        /*
+         * Tilt the galactic band.
+         */
+        const tilt =
+            0.42;
+
+
+        milkyWayPositions.push(
+            x,
+            y * Math.cos(tilt) -
+                z * Math.sin(tilt),
+
+            y * Math.sin(tilt) +
+                z * Math.cos(tilt)
+        );
+
+    }
+
+
+    milkyWayGeometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(
+            milkyWayPositions,
+            3
+        )
     );
 
 
-    sprite.position.copy(
-        entry.position
+    const milkyWayMaterial =
+        new THREE.PointsMaterial({
+
+            color: 0x9ab9d8,
+
+            size: 0.12,
+
+            transparent: true,
+
+            opacity: 0.12,
+
+            depthWrite: false,
+
+            blending:
+                THREE.AdditiveBlending
+
+        });
+
+
+    const milkyWay =
+        new THREE.Points(
+            milkyWayGeometry,
+            milkyWayMaterial
+        );
+
+
+    scene.add(
+        milkyWay
     );
 
 
-    scene.add(sprite);
+    /* =====================================================
+       HTML LABELS
+       ===================================================== */
+
+    const importantLabels = [];
 
 
-    backgroundStars.push({
-        star: entry.star,
-        sprite: sprite,
-        position: entry.position,
-        distance: entry.distance
-    });
+    const backgroundLabels = [];
 
-});
+
+    function createLabel(
+        text,
+        sprite,
+        important
+    ) {
+
+        const label =
+            document.createElement("div");
+
+        label.className =
+            important
+                ? "star-map-label important-label"
+                : "star-map-label background-label";
+
+        label.textContent =
+            text;
+
+        container.appendChild(
+            label
+        );
+
+
+        return {
+
+            sprite: sprite,
+
+            label: label
+
+        };
+    }
+
+
+    importantLabels.push(
+        createLabel(
+            "Sol",
+            solSprite,
+            true
+        )
+    );
+
+
+    importantLabels.push(
+        createLabel(
+            getStarName(star1),
+            star1Sprite,
+            true
+        )
+    );
+
+
+    importantLabels.push(
+        createLabel(
+            getStarName(star2),
+            star2Sprite,
+            true
+        )
+    );
+
+
+    nearbyStars
+        .slice(0, 12)
+        .forEach(entry => {
+
+            backgroundLabels.push(
+                createLabel(
+                    getStarName(
+                        entry.star
+                    ),
+                    entry.sprite,
+                    false
+                )
+            );
+
+        });
+
+
+    /* =====================================================
+       ANGLE CALCULATION
+       ===================================================== */
+
+    function calculateAngle(
+        vertex,
+        pointA,
+        pointB
+    ) {
+
+        const vectorA =
+            pointA
+                .clone()
+                .sub(vertex)
+                .normalize();
+
+        const vectorB =
+            pointB
+                .clone()
+                .sub(vertex)
+                .normalize();
+
+
+        let cosine =
+            vectorA.dot(
+                vectorB
+            );
+
+
+        cosine =
+            Math.max(
+                -1,
+                Math.min(
+                    1,
+                    cosine
+                )
+            );
+
+
+        return (
+            Math.acos(
+                cosine
+            ) *
+            180 /
+            Math.PI
+        );
+    }
+
+
+    const vertexData = [
+
+        {
+            name: "Sol",
+            position: solPosition
+        },
+
+        {
+            name:
+                getStarName(star1),
+            position:
+                star1Position
+        },
+
+        {
+            name:
+                getStarName(star2),
+            position:
+                star2Position
+        }
+
+    ];
+
+
+    /* =====================================================
+       POINTER / TOUCH INTERACTION
+       ===================================================== */
+
+    const raycaster =
+        new THREE.Raycaster();
+
+    const pointer =
+        new THREE.Vector2();
+
+
+    let activeStar = null;
+
+    let activeLine = null;
+
+
+    function projectToScreen(
+        position
+    ) {
+
+        const projected =
+            position.clone();
+
+        projected.project(
+            camera
+        );
+
+
+        return {
+
+            x:
+                (
+                    projected.x *
+                    0.5 +
+                    0.5
+                ) *
+                container.clientWidth,
+
+            y:
+                (
+                    -projected.y *
+                    0.5 +
+                    0.5
+                ) *
+                container.clientHeight,
+
+            z:
+                projected.z
+
+        };
+
+    }
+
+
+    function distanceToSegment(
+        point,
+        start,
+        end
+    ) {
+
+        const dx =
+            end.x -
+            start.x;
+
+        const dy =
+            end.y -
+            start.y;
+
+
+        const lengthSquared =
+            dx * dx +
+            dy * dy;
+
+
+        if (lengthSquared === 0) {
+
+            return Math.hypot(
+                point.x - start.x,
+                point.y - start.y
+            );
+
+        }
+
+
+        let t =
+            (
+                (point.x - start.x) * dx +
+                (point.y - start.y) * dy
+            ) /
+            lengthSquared;
+
+
+        t =
+            Math.max(
+                0,
+                Math.min(
+                    1,
+                    t
+                )
+            );
+
+
+        const closestX =
+            start.x +
+            t * dx;
+
+        const closestY =
+            start.y +
+            t * dy;
+
+
+        return Math.hypot(
+            point.x - closestX,
+            point.y - closestY
+        );
+
+    }
+
+
+    function getPointerPosition(
+        event
+    ) {
+
+        const rect =
+            container.getBoundingClientRect();
+
+
+        return {
+
+            x:
+                event.clientX -
+                rect.left,
+
+            y:
+                event.clientY -
+                rect.top
+
+        };
+
+    }
+
+
+    function resetLineHighlight() {
+
+        triangleLines.forEach(
+            data => {
+
+                data.line.material.opacity =
+                    data.baseOpacity;
+
+            }
+        );
+
+        activeLine = null;
+    }
+
+
+    function setPointer(
+        event
+    ) {
+
+        const position =
+            getPointerPosition(
+                event
+            );
+
+
+        pointer.x =
+            (
+                position.x /
+                container.clientWidth
+            ) *
+            2 -
+            1;
+
+        pointer.y =
+            -(
+                position.y /
+                container.clientHeight
+            ) *
+            2 +
+            1;
+
+
+        return position;
+    }
+
+
+    function handlePointer(
+        event,
+        isClick
+    ) {
+
+        const position =
+            setPointer(event);
+
+
+        /*
+         * First check the three important stars.
+         */
+        let closestVertex = null;
+
+        let closestVertexDistance =
+            Infinity;
+
+
+        vertexData.forEach(
+            vertex => {
+
+                const projected =
+                    projectToScreen(
+                        vertex.position
+                    );
+
+
+                if (
+                    projected.z < -1 ||
+                    projected.z > 1
+                ) {
+                    return;
+                }
+
+
+                const distance =
+                    Math.hypot(
+                        position.x -
+                            projected.x,
+                        position.y -
+                            projected.y
+                    );
+
+
+                if (
+                    distance < 22 &&
+                    distance <
+                        closestVertexDistance
+                ) {
+
+                    closestVertex =
+                        vertex;
+
+                    closestVertexDistance =
+                        distance;
+
+                }
+
+            }
+        );
+
+
+        if (closestVertex) {
+
+            resetLineHighlight();
+
+            showTooltip(
+                closestVertex.name,
+                `Angle: ${
+                    calculateVertexAngle(
+                        closestVertex
+                    ).toFixed(3)
+                }°`
+            );
+
+
+            moveTooltip(
+                position.x,
+                position.y
+            );
+
+
+            if (isClick) {
+
+                controls.target.copy(
+                    closestVertex.position
+                );
+
+                controls.update();
+
+            }
+
+
+            return true;
+        }
+
+
+        /*
+         * Then check triangle edges.
+         */
+        let closestLine = null;
+
+        let closestLineDistance =
+            Infinity;
+
+
+        triangleLines.forEach(
+            data => {
+
+                const start =
+                    projectToScreen(
+                        data.start
+                    );
+
+                const end =
+                    projectToScreen(
+                        data.end
+                    );
+
+
+                if (
+                    start.z < -1 ||
+                    start.z > 1 ||
+                    end.z < -1 ||
+                    end.z > 1
+                ) {
+                    return;
+                }
+
+
+                const distance =
+                    distanceToSegment(
+                        position,
+                        start,
+                        end
+                    );
+
+
+                if (
+                    distance < 10 &&
+                    distance <
+                        closestLineDistance
+                ) {
+
+                    closestLine =
+                        data;
+
+                    closestLineDistance =
+                        distance;
+
+                }
+
+            }
+        );
+
+
+        if (closestLine) {
+
+            resetLineHighlight();
+
+            closestLine
+                .line
+                .material
+                .opacity = 0.35;
+
+            activeLine =
+                closestLine;
+
+
+            showTooltip(
+                `${closestLine.name1} ↔ ${closestLine.name2}`,
+                `Distance: ${
+                    closestLine.distance
+                        .toFixed(3)
+                } light-years`
+            );
+
+
+            moveTooltip(
+                position.x,
+                position.y
+            );
+
+
+            return true;
+        }
+
+
+        /*
+         * Finally check real background stars.
+         */
+        raycaster.setFromCamera(
+            pointer,
+            camera
+        );
+
+
+        const backgroundObjects =
+            backgroundStars.map(
+                entry =>
+                    entry.sprite
+            );
+
+
+        const intersections =
+            raycaster.intersectObjects(
+                backgroundObjects
+            );
+
+
+        if (
+            intersections.length > 0
+        ) {
+
+            const sprite =
+                intersections[0].object;
+
+
+            const background =
+                backgroundStars.find(
+                    entry =>
+                        entry.sprite ===
+                        sprite
+                );
+
+
+            if (background) {
+
+                resetLineHighlight();
+
+
+                showTooltip(
+                    background.name,
+                    `${background.distance.toFixed(2)} light-years from Sol`
+                );
+
+
+                moveTooltip(
+                    position.x,
+                    position.y
+                );
+
+
+                if (isClick) {
+
+                    controls.target.copy(
+                        background.position
+                    );
+
+                    controls.update();
+
+                }
+
+
+                return true;
+            }
+
+        }
+
+
+        /*
+         * Nothing was selected.
+         */
+        resetLineHighlight();
+        hideTooltip();
+
+        if (isClick) {
+
+            controls.target.copy(
+                mapCenter
+            );
+
+            controls.update();
+
+        }
+
+
+        return false;
+    }
+
+
+    function calculateVertexAngle(
+        vertex
+    ) {
+
+        if (
+            vertex.position ===
+            solPosition
+        ) {
+
+            return calculateAngle(
+                solPosition,
+                star1Position,
+                star2Position
+            );
+
+        }
+
+
+        if (
+            vertex.position ===
+            star1Position
+        ) {
+
+            return calculateAngle(
+                star1Position,
+                solPosition,
+                star2Position
+            );
+
+        }
+
+
+        return calculateAngle(
+            star2Position,
+            solPosition,
+            star1Position
+        );
+
+    }
+
+
+    function handlePointerMove(event) {
+
+    handlePointer(
+        event,
+        false
+    );
+
+}
+
+
+function handlePointerLeave() {
+
+    resetLineHighlight();
+    hideTooltip();
+
+}
+
+
+function handlePointerDown(event) {
+
+    handlePointer(
+        event,
+        true
+    );
+
+}
+
+
+renderer.domElement.addEventListener(
+    "pointermove",
+    handlePointerMove
+);
+
+
+renderer.domElement.addEventListener(
+    "pointerleave",
+    handlePointerLeave
+);
+
+
+renderer.domElement.addEventListener(
+    "pointerdown",
+    handlePointerDown
+);
+
+
+    /* =====================================================
+       LABEL POSITIONING
+       ===================================================== */
+
+    function updateLabel(
+        data
+    ) {
+
+        const projected =
+            projectToScreen(
+                data.sprite.position
+            );
+
+
+        if (
+            projected.z < -1 ||
+            projected.z > 1
+        ) {
+
+            data.label.style.display =
+                "none";
+
+            return;
+
+        }
+
+
+        data.label.style.display =
+            "block";
+
+
+        data.label.style.left =
+            `${projected.x}px`;
+
+        data.label.style.top =
+            `${projected.y}px`;
+
+    }
+
+
     /* =====================================================
        ANIMATION
        ===================================================== */
@@ -1446,47 +2618,70 @@ nearbyStars.forEach(entry => {
 
 
                 const starDistance =
-    star.sprite.position.distanceTo(camera.position);
+                    star.sprite
+                        .position
+                        .distanceTo(
+                            camera.position
+                        );
 
-const visibleHeight =
-    2 *
-    starDistance *
-    Math.tan(
-        camera.fov *
-        Math.PI /
-        360
-    );
 
-const worldUnitsPerPixel =
-    visibleHeight /
-    container.clientHeight;
+                const visibleHeight =
+                    2 *
+                    starDistance *
+                    Math.tan(
+                        camera.fov *
+                        Math.PI /
+                        360
+                    );
 
-const minimumSize =
-    38 *
-    worldUnitsPerPixel;
 
-const finalSize =
-    Math.max(
-        star.baseSize * pulse,
-        minimumSize
-    );
+                const worldUnitsPerPixel =
+                    visibleHeight /
+                    container.clientHeight;
 
-star.sprite.scale.set(
-    finalSize,
-    finalSize,
-    1
-);
+
+                const minimumSize =
+                    38 *
+                    worldUnitsPerPixel;
+
+
+                const finalSize =
+                    Math.max(
+                        star.baseSize *
+                            pulse,
+                        minimumSize
+                    );
+
+
+                star.sprite.scale.set(
+                    finalSize,
+                    finalSize,
+                    1
+                );
 
 
                 star.sprite.material.opacity =
-                    0.90 +
-                    Math.sin(
-                        elapsed *
-                        star.speed +
-                        star.phase
-                    ) *
-                    0.08;
+                    star.isSol
+                        ? 1
+                        : 0.90 +
+                          Math.sin(
+                              elapsed *
+                              star.speed +
+                              star.phase
+                          ) *
+                          0.08;
+
             }
+        );
+
+
+        importantLabels.forEach(
+            updateLabel
+        );
+
+
+        backgroundLabels.forEach(
+            updateLabel
         );
 
 
@@ -1496,6 +2691,7 @@ star.sprite.scale.set(
             scene,
             camera
         );
+
     }
 
 
@@ -1518,6 +2714,7 @@ star.sprite.scale.set(
             container.clientWidth,
             container.clientHeight
         );
+
     }
 
 
@@ -1538,15 +2735,92 @@ star.sprite.scale.set(
                 animationFrame
             );
 
+
             window.removeEventListener(
                 "resize",
                 handleResize
             );
 
+
+            renderer.domElement
+    .removeEventListener(
+        "pointermove",
+        handlePointerMove
+    );
+
+
+renderer.domElement
+    .removeEventListener(
+        "pointerleave",
+        handlePointerLeave
+    );
+
+
+renderer.domElement
+    .removeEventListener(
+        "pointerdown",
+        handlePointerDown
+    );
+
+
             controls.dispose();
+
 
             starTexture.dispose();
 
+
+            milkyWayGeometry.dispose();
+
+            milkyWayMaterial.dispose();
+
+
+            triangleLines.forEach(
+                data => {
+
+                    data.line.geometry.dispose();
+                    data.line.material.dispose();
+
+                }
+            );
+
+
+            backgroundStars.forEach(
+                entry => {
+
+                    entry.sprite
+                        .material
+                        .dispose();
+
+                }
+            );
+
+
+            randomBackgroundStars.forEach(
+                sprite => {
+
+                    sprite.material.dispose();
+
+                }
+            );
+
+
             renderer.dispose();
+
+
+            importantLabels.forEach(
+                data =>
+                    data.label.remove()
+            );
+
+
+            backgroundLabels.forEach(
+                data =>
+                    data.label.remove()
+            );
+
+
+            tooltip.remove();
+
         };
+
 }
