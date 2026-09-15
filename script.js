@@ -303,7 +303,42 @@ function findStar(name) {
    AUTOCOMPLETE
    ========================================================= */
 
-getsu
+function getSuggestions(query) {
+
+    const normalizedQuery = normalize(query);
+
+    if (!normalizedQuery) {
+        return [];
+    }
+
+    const foundStars = new Set();
+    const prefixMatches = [];
+    const partialMatches = [];
+
+    for (const entry of searchEntries) {
+
+        if (foundStars.has(entry.star)) {
+            continue;
+        }
+
+        if (entry.normalized.startsWith(normalizedQuery)) {
+
+            foundStars.add(entry.star);
+            prefixMatches.push(entry.star);
+
+        }
+
+        else if (entry.normalized.includes(normalizedQuery)) {
+
+            foundStars.add(entry.star);
+            partialMatches.push(entry.star);
+        }
+    }
+
+    return prefixMatches
+        .concat(partialMatches)
+        .slice(0, 8);
+}
 
 
 /* =========================================================
