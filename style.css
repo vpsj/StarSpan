@@ -1,0 +1,353 @@
+@font-face {
+    font-family: 'starry';
+    src: url('starrynight-xnyj-webfont.woff2') format('woff2'),
+         url('starrynight-xnyj-webfont.woff') format('woff');
+    font-display: swap;
+}
+
+
+/* =========================
+   GENERAL
+   ========================= */
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100%;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #05070b;
+    color: #ffffff;
+}
+
+
+/* =========================
+   BACKGROUND
+   ========================= */
+
+#booking {
+    position: relative;
+    min-height: 100vh;
+
+    background-image: url('wallpaper3.jpg');
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+
+    overflow: hidden;
+}
+
+
+/* Dark overlay over the photograph */
+
+#booking::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+
+    background:
+        linear-gradient(
+            rgba(3, 6, 12, 0.48),
+            rgba(3, 6, 12, 0.62)
+        );
+
+    pointer-events: none;
+}
+
+
+/* =========================
+   CENTERING
+   ========================= */
+
+.section-center {
+    position: relative;
+
+    min-height: 100vh;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 40px 20px;
+}
+
+
+/* =========================
+   CONTAINER
+   ========================= */
+
+.container {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+
+/* =========================
+   CALCULATOR
+   ========================= */
+
+.booking-form {
+    width: 100%;
+}
+
+
+/* =========================
+   HEADER
+   ========================= */
+
+.form-header {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.form-header h1 {
+    margin: 0;
+
+    font-family: 'starry', Arial, sans-serif;
+    font-size: clamp(32px, 5vw, 52px);
+    line-height: 1.1;
+
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+
+    color: #78baf3;
+
+    text-shadow:
+        0 0 10px rgba(72, 136, 200, 0.45),
+        0 0 25px rgba(72, 136, 200, 0.2);
+}
+
+.form-header p {
+    margin: 12px 0 0;
+
+    color: rgba(220, 235, 250, 0.82);
+    font-size: 15px;
+    letter-spacing: 0.5px;
+}
+
+
+/* =========================
+   FORM PANEL
+   ========================= */
+
+#star-form {
+    background: rgba(13, 17, 25, 0.92);
+
+    padding: 30px;
+
+    border: 1px solid rgba(130, 180, 225, 0.15);
+    border-radius: 8px;
+
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.55),
+        0 0 35px rgba(30, 100, 170, 0.08);
+
+    backdrop-filter: blur(5px);
+}
+
+
+/* =========================
+   INPUT ROW
+   ========================= */
+
+.row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+
+/* =========================
+   FORM GROUP
+   ========================= */
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+
+/* =========================
+   LABELS
+   ========================= */
+
+.form-label {
+    display: block;
+
+    margin-bottom: 8px;
+
+    color: #ffffff;
+
+    font-size: 18px;
+    font-weight: 700;
+    font-style: italic;
+
+    text-align: center;
+}
+
+
+/* =========================
+   INPUTS
+   ========================= */
+
+.form-control {
+    display: block;
+
+    width: 100%;
+    height: 50px;
+
+    padding: 0 15px;
+
+    background: rgba(88, 91, 96, 0.9);
+
+    border: 1px solid transparent;
+    border-radius: 5px;
+
+    outline: none;
+
+    color: #ffffff;
+
+    font-family: inherit;
+    font-size: 15px;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease;
+}
+
+.form-control::placeholder {
+    color: rgba(225, 230, 235, 0.72);
+}
+
+.form-control:focus {
+    background: rgba(100, 104, 110, 0.95);
+
+    border-color: rgba(123, 220, 241, 0.65);
+
+    box-shadow:
+        0 0 0 3px rgba(123, 220, 241, 0.10),
+        0 0 15px rgba(123, 220, 241, 0.12);
+}
+
+
+/* =========================
+   BUTTON
+   ========================= */
+
+.form-btn {
+    margin-top: 5px;
+}
+
+.submit-btn {
+    width: 100%;
+    height: 52px;
+
+    border: none;
+    border-radius: 5px;
+
+    background: #7bdcf1;
+    color: #101113;
+
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 800;
+
+    letter-spacing: 1px;
+    text-transform: uppercase;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.15s ease,
+        background 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.submit-btn:hover {
+    background: #91e5f6;
+
+    box-shadow:
+        0 0 20px rgba(123, 220, 241, 0.25);
+
+    transform: translateY(-1px);
+}
+
+.submit-btn:active {
+    transform: translateY(1px);
+}
+
+
+/* =========================
+   RESULT
+   ========================= */
+
+.result {
+    margin-top: 25px;
+
+    text-align: center;
+
+    color: #bcd2e8;
+
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.result:empty {
+    display: none;
+}
+
+
+/* =========================
+   MOBILE
+   ========================= */
+
+@media (max-width: 600px) {
+
+    .section-center {
+        padding: 30px 15px;
+    }
+
+    .form-header {
+        margin-bottom: 22px;
+    }
+
+    .form-header h1 {
+        font-size: 34px;
+    }
+
+    .form-header p {
+        font-size: 14px;
+    }
+
+    #star-form {
+        padding: 22px 18px;
+    }
+
+    .row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .form-label {
+        text-align: left;
+    }
+
+    .form-control {
+        height: 48px;
+    }
+
+    .submit-btn {
+        height: 50px;
+    }
+}
