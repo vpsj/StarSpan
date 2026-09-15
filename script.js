@@ -866,7 +866,15 @@ const scene = new THREE.Scene();
     );
 
     camera.position.set(0, 0, 10);
+   const controls = new THREE.OrbitControls(
+    camera,
+    container
+);
 
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.enablePan = true;
+controls.enableZoom = true;
     const renderer = new THREE.WebGLRenderer({
         antialias: true
     });
@@ -884,7 +892,7 @@ const scene = new THREE.Scene();
     function animate() {
 
         requestAnimationFrame(animate);
-
+        controls.update();
         renderer.render(scene, camera);
     }
 
