@@ -1169,7 +1169,7 @@ function initializeStarMap(star1, star2) {
             isSol
                 ? 0.42
                 : Math.max(
-                    0.12,
+                    0.20,
                     0.30 /
                     Math.sqrt(
                         Math.max(
