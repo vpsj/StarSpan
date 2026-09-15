@@ -967,8 +967,6 @@ camera.position.set(
  * Orbit around the centre of the actual
  * three-star configuration rather than Sol.
  */
-controls.target.copy(mapCenter);
-controls.update();
 
 
     /* =====================================================
@@ -985,7 +983,8 @@ controls.update();
     controls.dampingFactor = 0.05;
     controls.enablePan = true;
     controls.enableZoom = true;
-
+    controls.target.copy(mapCenter);
+    controls.update();
 
     /* =====================================================
        RENDERER
@@ -1193,19 +1192,19 @@ controls.update();
          *
          * Queried stars are deliberately prominent.
          */
-        const baseSize =
-            isSol
-                ? 0.42
-                : Math.max(
-                    0.20,
-                    0.30 /
-                    Math.sqrt(
-                        Math.max(
-                            distance,
-                            1
-                        )
-                    )
-                );
+       const baseSize =
+    isSol
+        ? 0.42
+        : Math.max(
+            0.30,
+            1.5 /
+            Math.sqrt(
+                Math.max(
+                    distance,
+                    1
+                )
+            )
+        );
 
 
         sprite.scale.set(
@@ -1291,11 +1290,37 @@ controls.update();
                     0.045;
 
 
-                star.sprite.scale.set(
-                    star.baseSize * pulse,
-                    star.baseSize * pulse,
-                    1
-                );
+                const starDistance =
+    star.sprite.position.distanceTo(camera.position);
+
+const visibleHeight =
+    2 *
+    starDistance *
+    Math.tan(
+        camera.fov *
+        Math.PI /
+        360
+    );
+
+const worldUnitsPerPixel =
+    visibleHeight /
+    container.clientHeight;
+
+const minimumSize =
+    38 *
+    worldUnitsPerPixel;
+
+const finalSize =
+    Math.max(
+        star.baseSize * pulse,
+        minimumSize
+    );
+
+star.sprite.scale.set(
+    finalSize,
+    finalSize,
+    1
+);
 
 
                 star.sprite.material.opacity =
