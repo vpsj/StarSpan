@@ -1242,8 +1242,6 @@ function initializeStarMap(star1, star2) {
 
     const animatedStars = [];
 
-    const importantStars = [];
-
 
     function addStar(
         position,
@@ -1459,8 +1457,7 @@ function initializeStarMap(star1, star2) {
         )
     );
 
-
-    /* =====================================================
+      /* =====================================================
        BACKGROUND REAL STARS
        ===================================================== */
 
@@ -1474,6 +1471,14 @@ function initializeStarMap(star1, star2) {
         ]);
 
 
+    /*
+     * Find real catalogue stars close to Sol.
+     *
+     * We deliberately keep this small:
+     * maximum 8 stars, within 20 light-years.
+     *
+     * The queried stars themselves are excluded.
+     */
     const nearbyStars =
         stars
             .filter(star =>
@@ -1494,34 +1499,44 @@ function initializeStarMap(star1, star2) {
                         position.length()
 
                 };
+
             })
             .filter(entry =>
-                Number.isFinite(
-                    entry.distance
-                )
+                Number.isFinite(entry.distance) &&
+                entry.distance <= 20
             )
             .sort((a, b) =>
                 a.distance -
                 b.distance
             )
-            .slice(0, 50);
+            .slice(0, 8);
 
 
+    /*
+     * Create the small number of real nearby stars.
+     */
     nearbyStars.forEach(
         entry => {
 
             const material =
                 new THREE.SpriteMaterial({
+
                     map: starTexture,
+
                     transparent: true,
+
                     depthWrite: false,
+
                     opacity:
-                        0.28 +
-                        Math.random() * 0.22,
+                        0.32 +
+                        Math.random() * 0.20,
+
                     blending:
                         THREE.AdditiveBlending,
+
                     color:
                         randomStarColour()
+
                 });
 
 
@@ -1531,17 +1546,13 @@ function initializeStarMap(star1, star2) {
                 );
 
 
+            /*
+             * Real background stars are deliberately
+             * much smaller than the three important stars.
+             */
             const size =
-                Math.max(
-                    0.08,
-                    0.18 /
-                    Math.sqrt(
-                        Math.max(
-                            entry.distance,
-                            1
-                        )
-                    )
-                );
+                0.10 +
+                Math.random() * 0.06;
 
 
             sprite.scale.set(
@@ -1556,16 +1567,21 @@ function initializeStarMap(star1, star2) {
             );
 
 
-            scene.add(sprite);
+            scene.add(
+                sprite
+            );
 
 
             backgroundStars.push({
 
-                star: entry.star,
+                star:
+                    entry.star,
 
-                sprite: sprite,
+                sprite:
+                    sprite,
 
-                position: entry.position,
+                position:
+                    entry.position,
 
                 distance:
                     entry.distance,
@@ -1585,19 +1601,51 @@ function initializeStarMap(star1, star2) {
        PROCEDURAL BACKGROUND STARFIELD
        ===================================================== */
 
-    const randomBackgroundStars = [];
-
-
+    /*
+     * Large spherical field surrounding the local
+     * star system.
+     *
+     * These are decorative stars rather than catalogue
+     * objects, so they are not given names or interaction.
+     */
     const backdropRadius =
         Math.max(
             500,
-            mapRadius * 5
+            mapRadius * 6
         );
+
+
+    const backgroundStarCount = 2200;
+
+    const backgroundGeometry =
+        new THREE.BufferGeometry();
+
+
+    const backgroundPositions = [];
+
+    const backgroundColors = [];
+
+
+    /*
+     * A few subtle stellar colour groups.
+     *
+     * Most stars remain white/blue-white, with a small
+     * fraction appearing warmer.
+     */
+    const backgroundColourOptions = [
+
+        new THREE.Color(0xffffff),
+        new THREE.Color(0xddeaff),
+        new THREE.Color(0xc8dcff),
+        new THREE.Color(0xfff2d2),
+        new THREE.Color(0xffdfad)
+
+    ];
 
 
     for (
         let i = 0;
-        i < 900;
+        i < backgroundStarCount;
         i++
     ) {
 
@@ -1609,12 +1657,17 @@ function initializeStarMap(star1, star2) {
             Math.PI *
             2;
 
+
+        /*
+         * Avoid putting all stars at exactly the
+         * same radius. Cube-root distribution gives
+         * a natural-looking 3D volume.
+         */
         const radius =
             backdropRadius *
-            (
-                0.55 +
-                Math.random() *
-                0.45
+            Math.cbrt(
+                0.15 +
+                Math.random() * 0.85
             );
 
 
@@ -1625,110 +1678,134 @@ function initializeStarMap(star1, star2) {
             );
 
 
-        const position =
-            new THREE.Vector3(
+        const x =
+            radius *
+            horizontal *
+            Math.cos(theta);
 
-                radius *
-                horizontal *
-                Math.cos(theta),
+        const y =
+            radius * u;
 
-                radius * u,
+        const z =
+            radius *
+            horizontal *
+            Math.sin(theta);
 
-                radius *
-                horizontal *
-                Math.sin(theta)
 
-            );
+        backgroundPositions.push(
+            x,
+            y,
+            z
+        );
 
 
         /*
-         * Random stars are small and atmospheric.
+         * Mostly blue/white stars with occasional
+         * warmer stars.
          */
-        const material =
-            new THREE.SpriteMaterial({
-
-                map: starTexture,
-
-                transparent: true,
-
-                depthWrite: false,
-
-                opacity:
-                    0.08 +
+        const colour =
+            backgroundColourOptions[
+                Math.floor(
                     Math.random() *
-                    0.18,
-
-                blending:
-                    THREE.AdditiveBlending,
-
-                color:
-                    randomStarColour()
-
-            });
+                    backgroundColourOptions.length
+                )
+            ];
 
 
-        const sprite =
-            new THREE.Sprite(
-                material
-            );
-
-
-        const size =
-            0.025 +
-            Math.random() *
-            0.045;
-
-
-        sprite.scale.set(
-            size,
-            size,
-            1
-        );
-
-
-        sprite.position.copy(
-            position
-        );
-
-
-        scene.add(sprite);
-
-
-        randomBackgroundStars.push(
-            sprite
+        backgroundColors.push(
+            colour.r,
+            colour.g,
+            colour.b
         );
 
     }
+
+
+    backgroundGeometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(
+            backgroundPositions,
+            3
+        )
+    );
+
+
+    backgroundGeometry.setAttribute(
+        "color",
+        new THREE.Float32BufferAttribute(
+            backgroundColors,
+            3
+        )
+    );
+
+
+    const backgroundMaterial =
+        new THREE.PointsMaterial({
+
+            map:
+                starTexture,
+
+            size:
+                0.045,
+
+            vertexColors:
+                true,
+
+            transparent:
+                true,
+
+            opacity:
+                0.48,
+
+            depthWrite:
+                false,
+
+            blending:
+                THREE.AdditiveBlending
+
+        });
+
+
+    const backgroundStarField =
+        new THREE.Points(
+            backgroundGeometry,
+            backgroundMaterial
+        );
+
+
+    scene.add(
+        backgroundStarField
+    );
 
 
     /* =====================================================
        MILKY WAY BAND
        ===================================================== */
 
+    /*
+     * A broad, diffuse stellar disk.
+     *
+     * This is deliberately subtle: it should resemble
+     * a distant galactic plane rather than a flat
+     * artificial stripe.
+     */
     const milkyWayGeometry =
         new THREE.BufferGeometry();
 
+
     const milkyWayPositions = [];
 
+    const milkyWayColors = [];
 
-    /*
-     * Create a broad, diffuse band of stars
-     * through the background.
-     */
+
+    const milkyWayCount = 5000;
+
+
     for (
         let i = 0;
-        i < 1800;
+        i < milkyWayCount;
         i++
     ) {
-
-        const radius =
-            backdropRadius *
-            (
-                0.35 +
-                Math.random() *
-                0.65
-            );
-
 
         const angle =
             Math.random() *
@@ -1737,16 +1814,27 @@ function initializeStarMap(star1, star2) {
 
 
         /*
-         * Concentrate most stars around a
-         * tilted plane.
+         * Spread stars across the galactic disk,
+         * with more density toward the centre.
          */
-        const width =
-            (
-                Math.random() -
-                0.5
-            ) *
+        const radius =
             backdropRadius *
-            0.22;
+            Math.pow(
+                Math.random(),
+                0.72
+            );
+
+
+        /*
+         * The thickness increases slightly
+         * farther from the centre.
+         */
+        const thickness =
+            backdropRadius *
+            (
+                0.018 +
+                Math.random() * 0.075
+            );
 
 
         const x =
@@ -1758,27 +1846,75 @@ function initializeStarMap(star1, star2) {
             Math.sin(angle);
 
 
+        /*
+         * Slight curved structure prevents the band
+         * from looking like a perfectly flat sheet.
+         */
         const y =
-            width +
-            Math.sin(angle * 2) *
+            (
+                Math.random() -
+                0.5
+            ) *
+            thickness
+            +
+            Math.sin(angle * 3) *
             backdropRadius *
-            0.04;
+            0.012;
 
 
         /*
-         * Tilt the galactic band.
+         * Tilt the galactic plane.
          */
         const tilt =
             0.42;
 
 
-        milkyWayPositions.push(
-            x,
-            y * Math.cos(tilt) -
-                z * Math.sin(tilt),
+        const tiltedY =
+            y *
+                Math.cos(tilt) -
+            z *
+                Math.sin(tilt);
 
-            y * Math.sin(tilt) +
-                z * Math.cos(tilt)
+
+        const tiltedZ =
+            y *
+                Math.sin(tilt) +
+            z *
+                Math.cos(tilt);
+
+
+        milkyWayPositions.push(
+
+            x,
+
+            tiltedY,
+
+            tiltedZ
+
+        );
+
+
+        /*
+         * Mostly cool white/blue light, with a tiny
+         * amount of warmer stellar colour.
+         */
+        const brightness =
+            0.65 +
+            Math.random() * 0.35;
+
+
+        milkyWayColors.push(
+
+            brightness,
+
+            brightness *
+                (0.91 +
+                Math.random() * 0.09),
+
+            brightness *
+                (0.96 +
+                Math.random() * 0.04)
+
         );
 
     }
@@ -1793,18 +1929,35 @@ function initializeStarMap(star1, star2) {
     );
 
 
+    milkyWayGeometry.setAttribute(
+        "color",
+        new THREE.Float32BufferAttribute(
+            milkyWayColors,
+            3
+        )
+    );
+
+
     const milkyWayMaterial =
         new THREE.PointsMaterial({
 
-            color: 0x9ab9d8,
+            map:
+                starTexture,
 
-            size: 0.12,
+            size:
+                0.075,
 
-            transparent: true,
+            vertexColors:
+                true,
 
-            opacity: 0.12,
+            transparent:
+                true,
 
-            depthWrite: false,
+            opacity:
+                0.18,
+
+            depthWrite:
+                false,
 
             blending:
                 THREE.AdditiveBlending
@@ -1990,9 +2143,6 @@ function initializeStarMap(star1, star2) {
 
     const pointer =
         new THREE.Vector2();
-
-
-    let activeStar = null;
 
     let activeLine = null;
 
@@ -2790,13 +2940,9 @@ renderer.domElement
             );
 
 
-            randomBackgroundStars.forEach(
-                sprite => {
+           backgroundGeometry.dispose();
 
-                    sprite.material.dispose();
-
-                }
-            );
+           backgroundMaterial.dispose();
 
 
             renderer.dispose();
