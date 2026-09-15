@@ -848,13 +848,15 @@ loadCatalogue();
 
 function initializeStarMap() {
 
-    const container = document.getElementById("star-map");
+   const container = document.getElementById("star-map");
 
-    if (!container) {
-        return;
-    }
+if (!container) {
+    return;
+}
 
-    const scene = new THREE.Scene();
+container.style.display = "block";
+
+const scene = new THREE.Scene();
 
     const camera = new THREE.PerspectiveCamera(
         60,
