@@ -1551,7 +1551,7 @@ function initializeStarMap(star1, star2) {
              * much smaller than the three important stars.
              */
             const size =
-                0.10 +
+                0.24 +
                 Math.random() * 0.06;
 
 
