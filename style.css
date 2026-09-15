@@ -351,3 +351,21 @@ body {
         height: 50px;
     }
 }
+/* =========================
+   RESULT DETAILS
+   ========================= */
+
+.result .star-name {
+    color: #87b6e6;
+}
+
+.result .distance {
+    color: #92c1f0;
+}
+
+.result .error {
+    display: block;
+    color: #f0a0a0;
+    font-size: 16px;
+    font-weight: 600;
+}
