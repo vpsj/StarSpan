@@ -854,6 +854,13 @@ if (!container) {
     return;
 }
 
+container.innerHTML = "";
+container.style.display = "block";
+
+if (!container) {
+    return;
+}
+
 container.style.display = "block";
 
 const scene = new THREE.Scene();
