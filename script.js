@@ -1254,7 +1254,162 @@ camera.position.set(
         false
     );
 
+/* =====================================================
+   TRIANGLE
+   ===================================================== */
 
+const triangleMaterial =
+    new THREE.LineBasicMaterial({
+        color: 0x8fc9e8,
+        transparent: true,
+        opacity: 0.22
+    });
+
+
+function createTriangleLine(start, end) {
+
+    const geometry =
+        new THREE.BufferGeometry()
+            .setFromPoints([
+                start,
+                end
+            ]);
+
+    const line =
+        new THREE.Line(
+            geometry,
+            triangleMaterial
+        );
+
+    scene.add(line);
+
+    return line;
+}
+
+
+/*
+ * Sol → Star 1
+ */
+createTriangleLine(
+    solPosition,
+    star1Position
+);
+
+
+/*
+ * Sol → Star 2
+ */
+createTriangleLine(
+    solPosition,
+    star2Position
+);
+
+
+/*
+ * Star 1 → Star 2
+ */
+createTriangleLine(
+    star1Position,
+    star2Position
+);
+
+/* =====================================================
+   BACKGROUND STARS
+   ===================================================== */
+
+const backgroundStars = [];
+
+
+/*
+ * Use the nearest catalogue stars to Sol.
+ * The queried stars themselves are excluded.
+ */
+const queriedStars = new Set([
+    star1,
+    star2
+]);
+
+
+const nearbyStars = stars
+    .filter(star =>
+        !queriedStars.has(star)
+    )
+    .map(star => {
+
+        const position =
+            starToPosition(star);
+
+        return {
+            star: star,
+            position: position,
+            distance: position.length()
+        };
+    })
+    .filter(entry =>
+        Number.isFinite(entry.distance)
+    )
+    .sort((a, b) =>
+        a.distance - b.distance
+    )
+    .slice(0, 50);
+
+
+/*
+ * Background stars are intentionally much more subtle
+ * than the three stars being investigated.
+ */
+nearbyStars.forEach(entry => {
+
+    const material =
+        new THREE.SpriteMaterial({
+            map: starTexture,
+            transparent: true,
+            depthWrite: false,
+            opacity: 0.35,
+            blending: THREE.AdditiveBlending
+        });
+
+
+    const sprite =
+        new THREE.Sprite(material);
+
+
+    const size =
+        Math.max(
+            0.035,
+            0.12 /
+            Math.sqrt(
+                Math.max(
+                    entry.distance,
+                    1
+                )
+            )
+        );
+
+
+    sprite.scale.set(
+        size,
+        size,
+        1
+    );
+
+
+    sprite.position.copy(
+        entry.position
+    );
+
+
+    scene.add(sprite);
+
+
+    backgroundStars.push({
+        star: entry.star,
+        sprite: sprite,
+        position: entry.position,
+        distance: entry.distance
+    });
+
+});
     /* =====================================================
        ANIMATION
        ===================================================== */
