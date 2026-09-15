@@ -5,35 +5,73 @@ let stars = [];
 let catalogueLoaded = false;
 
 
+/* =========================================================
+   NORMALIZATION
+   ========================================================= */
+
 /*
- * Convert CSV text into rows.
- * This handles quoted fields and commas inside quoted names.
+ * Used for searching.
+ *
+ * This makes:
+ *
+ * HIP 32349
+ * hip32349
+ * Hip-32349
+ *
+ * equivalent for searching purposes.
  */
+function normalize(value) {
+    return String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+}
+
+
+/*
+ * Used when displaying names.
+ */
+function cleanDisplay(value) {
+    return String(value || "").trim();
+}
+
+
+/* =========================================================
+   CSV PARSER
+   ========================================================= */
+
 function parseCSV(text) {
+
     const rows = [];
     let row = [];
     let field = "";
     let insideQuotes = false;
 
     for (let i = 0; i < text.length; i++) {
+
         const char = text[i];
         const next = text[i + 1];
 
         if (char === '"') {
+
             if (insideQuotes && next === '"') {
                 field += '"';
                 i++;
-            } else {
+            }
+
+            else {
                 insideQuotes = !insideQuotes;
             }
         }
 
         else if (char === "," && !insideQuotes) {
+
             row.push(field);
             field = "";
         }
 
         else if ((char === "\n" || char === "\r") && !insideQuotes) {
+
             if (char === "\r" && next === "\n") {
                 i++;
             }
@@ -54,6 +92,7 @@ function parseCSV(text) {
     }
 
     if (field.length > 0 || row.length > 0) {
+
         row.push(field);
 
         if (row.length > 1 || row[0] !== "") {
@@ -65,22 +104,14 @@ function parseCSV(text) {
 }
 
 
-/*
- * Normalize names in the same spirit as the original
- * Python program: lowercase and compare exact values.
- */
-function normalize(value) {
-    return String(value || "")
-        .trim()
-        .toLowerCase();
-}
+/* =========================================================
+   LOAD STAR CATALOGUE
+   ========================================================= */
 
-
-/*
- * Load the star catalogue when the page opens.
- */
 async function loadCatalogue() {
+
     try {
+
         result.innerHTML = "Loading star catalogue...";
 
         const response = await fetch("star%20catalog.csv");
@@ -90,59 +121,84 @@ async function loadCatalogue() {
         }
 
         const text = await response.text();
+
         const rows = parseCSV(text);
 
         if (rows.length < 2) {
             throw new Error("The star catalogue appears to be empty.");
         }
 
+
+        /* -------------------------
+           Read column headers
+           ------------------------- */
+
         const headers = rows[0].map(header => normalize(header));
 
-        /*
-         * Find the columns by their header names rather than
-         * relying entirely on fixed column numbers.
-         */
         const column = {};
 
         headers.forEach((header, index) => {
             column[header] = index;
         });
 
-        /*
-         * The catalogue shown to us contains:
-         *
-         * id, hip, hd, hr, gl, bf, proper,
-         * ra, dec, dist, alt1, alt2, ...
-         *
-         * We also support alt3 if it exists.
-         */
-        stars = rows.slice(1).map(row => ({
-            proper: row[column.proper] || "",
-            hip: row[column.hip] || "",
-            hd: row[column.hd] || "",
-            hr: row[column.hr] || "",
-            gl: row[column.gl] || "",
-            bf: row[column.bf] || "",
-            ra: parseFloat(row[column.ra]),
-            dec: parseFloat(row[column.dec]),
-            dist: parseFloat(row[column.dist]),
 
-            alt1: column.alt1 !== undefined ? row[column.alt1] || "" : "",
-            alt2: column.alt2 !== undefined ? row[column.alt2] || "" : "",
-            alt3: column.alt3 !== undefined ? row[column.alt3] || "" : ""
-        })).filter(star =>
-            Number.isFinite(star.ra) &&
-            Number.isFinite(star.dec) &&
-            Number.isFinite(star.dist)
-        );
+        /* -------------------------
+           Convert rows into stars
+           ------------------------- */
+
+        stars = rows.slice(1)
+            .map(row => ({
+
+                proper: row[column.proper] || "",
+                hip: row[column.hip] || "",
+                hd: row[column.hd] || "",
+                hr: row[column.hr] || "",
+                gl: row[column.gl] || "",
+                bf: row[column.bf] || "",
+
+                ra: parseFloat(row[column.ra]),
+                dec: parseFloat(row[column.dec]),
+                dist: parseFloat(row[column.dist]),
+
+                alt1: column.alt1 !== undefined
+                    ? row[column.alt1] || ""
+                    : "",
+
+                alt2: column.alt2 !== undefined
+                    ? row[column.alt2] || ""
+                    : "",
+
+                alt3: column.alt3 !== undefined
+                    ? row[column.alt3] || ""
+                    : ""
+
+            }))
+            .filter(star =>
+                Number.isFinite(star.ra) &&
+                Number.isFinite(star.dec) &&
+                Number.isFinite(star.dist)
+            );
+
 
         catalogueLoaded = true;
 
         result.innerHTML = "";
 
-        console.log(`StarSpan loaded ${stars.length.toLocaleString()} stars.`);
+        console.log(
+            `StarSpan loaded ${stars.length.toLocaleString()} stars.`
+        );
 
-    } catch (error) {
+
+        /*
+         * Build the autocomplete search index after
+         * the catalogue has finished loading.
+         */
+        buildSearchIndex();
+
+    }
+
+    catch (error) {
+
         console.error(error);
 
         result.innerHTML =
@@ -153,55 +209,457 @@ async function loadCatalogue() {
 }
 
 
+/* =========================================================
+   SEARCH INDEX
+   ========================================================= */
+
+let searchEntries = [];
+
+
 /*
- * Find a star by any of its supported designations.
+ * Build one searchable entry for every designation
+ * belonging to every star.
+ *
+ * Example:
+ *
+ * Sirius
+ * HIP 32349
+ * HD 48915
+ * HR 2491
+ * Gl 244A
+ *
+ * all point to the same underlying star object.
  */
+function buildSearchIndex() {
+
+    searchEntries = [];
+
+    const fields = [
+        "proper",
+        "hip",
+        "hd",
+        "hr",
+        "gl",
+        "bf",
+        "alt1",
+        "alt2",
+        "alt3"
+    ];
+
+    for (const star of stars) {
+
+        for (const field of fields) {
+
+            const displayValue = cleanDisplay(star[field]);
+
+            if (!displayValue) {
+                continue;
+            }
+
+            const normalizedValue = normalize(displayValue);
+
+            if (!normalizedValue) {
+                continue;
+            }
+
+            searchEntries.push({
+                value: displayValue,
+                normalized: normalizedValue,
+                star: star
+            });
+        }
+    }
+
+    console.log(
+        `StarSpan indexed ${searchEntries.length.toLocaleString()} designations.`
+    );
+}
+
+
+/* =========================================================
+   FIND EXACT STAR
+   ========================================================= */
+
 function findStar(name) {
+
     const searchName = normalize(name);
 
     if (!searchName) {
         return null;
     }
 
-    return stars.find(star =>
+    for (const entry of searchEntries) {
 
-        normalize(star.proper) === searchName ||
-        normalize(star.hip) === searchName ||
-        normalize(star.hd) === searchName ||
-        normalize(star.hr) === searchName ||
-        normalize(star.gl) === searchName ||
-        normalize(star.bf) === searchName ||
-        normalize(star.alt1) === searchName ||
-        normalize(star.alt2) === searchName ||
-        normalize(star.alt3) === searchName
+        if (entry.normalized === searchName) {
+            return entry.star;
+        }
+    }
 
-    ) || null;
+    return null;
+}
+
+
+/* =========================================================
+   AUTOCOMPLETE
+   ========================================================= */
+
+function getSuggestions(query) {
+
+    const normalizedQuery = normalize(query);
+
+    if (!normalizedQuery) {
+        return [];
+    }
+
+
+    /*
+     * Keep track of stars we've already returned.
+     *
+     * A star can have many matching designations, but
+     * we only want one suggestion for that star.
+     */
+    const foundStars = new Set();
+
+    const suggestions = [];
+
+
+    /*
+     * Search every designation.
+     *
+     * We use startsWith() because autocomplete should
+     * react to the beginning of a designation.
+     */
+    for (const entry of searchEntries) {
+
+        if (!entry.normalized.startsWith(normalizedQuery)) {
+            continue;
+        }
+
+        if (foundStars.has(entry.star)) {
+            continue;
+        }
+
+        foundStars.add(entry.star);
+
+        suggestions.push(entry.star);
+
+        /*
+         * Don't fill the screen with hundreds of results.
+         */
+        if (suggestions.length >= 8) {
+            break;
+        }
+    }
+
+    return suggestions;
+}
+
+
+/* =========================================================
+   FORMAT DESIGNATIONS
+   ========================================================= */
+
+function getDesignations(star) {
+
+    const designations = [];
+
+    const fields = [
+        "hip",
+        "hd",
+        "hr",
+        "gl",
+        "bf",
+        "alt1",
+        "alt2",
+        "alt3"
+    ];
+
+    for (const field of fields) {
+
+        const value = cleanDisplay(star[field]);
+
+        if (value && !designations.includes(value)) {
+            designations.push(value);
+        }
+    }
+
+    return designations;
 }
 
 
 /*
- * Calculate the distance between two stars.
- *
- * This follows the same mathematical calculation used
- * by the original Star Distance Calculator.
- *
- * RA  = hours -> converted to degrees by multiplying by 15
- * Dec = degrees
- * Dist = parsecs -> converted to light years using 3.26
+ * Get the best human-readable name.
  */
+function getStarName(star) {
+
+    if (cleanDisplay(star.proper)) {
+        return cleanDisplay(star.proper);
+    }
+
+    const designations = getDesignations(star);
+
+    if (designations.length > 0) {
+        return designations[0];
+    }
+
+    return "Unnamed star";
+}
+
+
+/* =========================================================
+   AUTOCOMPLETE UI
+   ========================================================= */
+
+function setupAutocomplete(inputId, suggestionsId) {
+
+    const input = document.getElementById(inputId);
+    const suggestionsBox = document.getElementById(suggestionsId);
+
+    let selectedIndex = -1;
+
+
+    function hideSuggestions() {
+
+        suggestionsBox.innerHTML = "";
+        suggestionsBox.classList.remove("visible");
+
+        selectedIndex = -1;
+    }
+
+
+    function showSuggestions() {
+
+        const query = input.value.trim();
+
+        if (!catalogueLoaded || !query) {
+            hideSuggestions();
+            return;
+        }
+
+
+        const suggestions = getSuggestions(query);
+
+        suggestionsBox.innerHTML = "";
+
+
+        if (suggestions.length === 0) {
+            hideSuggestions();
+            return;
+        }
+
+
+        suggestions.forEach((star, index) => {
+
+            const item = document.createElement("div");
+
+            item.className = "suggestion";
+
+            item.dataset.index = index;
+
+
+            const name = document.createElement("div");
+
+            name.className = "suggestion-name";
+
+            name.textContent = getStarName(star);
+
+
+            const designations = document.createElement("div");
+
+            designations.className = "suggestion-designations";
+
+            const designationList = getDesignations(star);
+
+            if (designationList.length > 0) {
+
+                designations.textContent =
+                    designationList.slice(0, 5).join(" · ");
+
+            }
+
+
+            item.appendChild(name);
+            item.appendChild(designations);
+
+
+            item.addEventListener("mousedown", function(event) {
+
+                /*
+                 * mousedown is used instead of click so the
+                 * input doesn't lose focus before selection.
+                 */
+                event.preventDefault();
+
+                selectSuggestion(star);
+            });
+
+
+            suggestionsBox.appendChild(item);
+
+        });
+
+
+        suggestionsBox.classList.add("visible");
+
+        selectedIndex = -1;
+    }
+
+
+    function selectSuggestion(star) {
+
+        input.value = getStarName(star);
+
+        hideSuggestions();
+
+        input.focus();
+    }
+
+
+    function updateHighlight() {
+
+        const items =
+            suggestionsBox.querySelectorAll(".suggestion");
+
+        items.forEach((item, index) => {
+
+            item.classList.toggle(
+                "selected",
+                index === selectedIndex
+            );
+
+        });
+    }
+
+
+    input.addEventListener("input", function() {
+
+        showSuggestions();
+
+    });
+
+
+    input.addEventListener("keydown", function(event) {
+
+        const items =
+            suggestionsBox.querySelectorAll(".suggestion");
+
+        if (!suggestionsBox.classList.contains("visible")) {
+            return;
+        }
+
+
+        if (event.key === "ArrowDown") {
+
+            event.preventDefault();
+
+            if (items.length === 0) {
+                return;
+            }
+
+            selectedIndex =
+                (selectedIndex + 1) % items.length;
+
+            updateHighlight();
+        }
+
+
+        else if (event.key === "ArrowUp") {
+
+            event.preventDefault();
+
+            if (items.length === 0) {
+                return;
+            }
+
+            selectedIndex =
+                selectedIndex <= 0
+                    ? items.length - 1
+                    : selectedIndex - 1;
+
+            updateHighlight();
+        }
+
+
+        else if (event.key === "Enter") {
+
+            if (selectedIndex >= 0 &&
+                selectedIndex < items.length) {
+
+                event.preventDefault();
+
+                const suggestions =
+                    getSuggestions(input.value);
+
+                if (suggestions[selectedIndex]) {
+                    selectSuggestion(
+                        suggestions[selectedIndex]
+                    );
+                }
+            }
+        }
+
+
+        else if (event.key === "Escape") {
+
+            hideSuggestions();
+        }
+
+    });
+
+
+    input.addEventListener("blur", function() {
+
+        /*
+         * Small delay gives mousedown on a suggestion time
+         * to select it before the dropdown disappears.
+         */
+        setTimeout(() => {
+            hideSuggestions();
+        }, 150);
+
+    });
+
+
+    /*
+     * Expose this so the rest of the page doesn't need
+     * to know anything about the autocomplete internals.
+     */
+    return {
+        hideSuggestions
+    };
+}
+
+
+/* =========================================================
+   DISTANCE CALCULATION
+   ========================================================= */
+
 function calculateDistance(star1, star2) {
 
+    /*
+     * RA is stored in hours.
+     * Convert hours to degrees.
+     */
     const R1 = 15 * star1.ra;
     const R2 = 15 * star2.ra;
 
+    /*
+     * Declination is already in degrees.
+     */
     const D1 = star1.dec;
     const D2 = star2.dec;
 
+    /*
+     * Distance is stored in parsecs.
+     * Convert to light-years using the same 3.26
+     * conversion used by the original program.
+     */
     const P1 = 3.26 * star1.dist;
     const P2 = 3.26 * star2.dist;
 
+
     /*
-     * Angular separation between the stars.
+     * Angular separation.
      */
     let cosine =
         Math.sin(D1 * Math.PI / 180) *
@@ -211,89 +669,45 @@ function calculateDistance(star1, star2) {
         Math.cos(D2 * Math.PI / 180) *
         Math.cos((R1 - R2) * Math.PI / 180);
 
+
     /*
-     * Protect against tiny floating-point errors such as
-     * 1.0000000000000002 or -1.0000000000000002.
+     * Protect against tiny floating-point errors.
      */
     cosine = Math.max(-1, Math.min(1, cosine));
 
+
     const angularDistance = Math.acos(cosine);
 
+
     /*
-     * 3-dimensional distance using the law of cosines.
+     * Three-dimensional distance using the
+     * law of cosines.
      */
     const distance = Math.sqrt(
+
         Math.pow(P1, 2) +
         Math.pow(P2, 2) -
-        2 * P1 * P2 * Math.cos(angularDistance)
+
+        2 * P1 * P2 *
+        Math.cos(angularDistance)
+
     );
 
+
+    /*
+     * Match the original website:
+     * three decimal places.
+     */
     return Math.round(distance * 1000) / 1000;
 }
 
 
-/*
- * Handle Calculate button.
- */
-form.addEventListener("submit", function(event) {
+/* =========================================================
+   HTML ESCAPING
+   ========================================================= */
 
-    event.preventDefault();
-
-    if (!catalogueLoaded) {
-        result.innerHTML =
-            '<span class="error">The star catalogue is still loading. Please try again.</span>';
-        return;
-    }
-
-    const name1 = document.getElementById("star1").value.trim();
-    const name2 = document.getElementById("star2").value.trim();
-
-    if (!name1 || !name2) {
-        result.innerHTML =
-            '<span class="error">Please enter both star names.</span>';
-        return;
-    }
-
-    const star1 = findStar(name1);
-    const star2 = findStar(name2);
-
-    if (!star1) {
-        result.innerHTML =
-            `Sorry. Star <span class="star-name">${escapeHTML(name1)}</span> ` +
-            `was not found in our database.`;
-        return;
-    }
-
-    if (!star2) {
-        result.innerHTML =
-            `Sorry. Star <span class="star-name">${escapeHTML(name2)}</span> ` +
-            `was not found in our database.`;
-        return;
-    }
-
-    /*
-     * Same catalogue entry.
-     */
-    if (star1 === star2) {
-        result.innerHTML =
-            "Sorry. Both the stars are the same. Please select distinct stars.";
-        return;
-    }
-
-    const distance = calculateDistance(star1, star2);
-
-    result.innerHTML =
-        `The distance between ` +
-        `<span class="star-name">${escapeHTML(name1)}</span> and ` +
-        `<span class="star-name">${escapeHTML(name2)}</span> ` +
-        `is <span class="distance">${distance.toLocaleString()} light-years.</span>`;
-});
-
-
-/*
- * Prevent user input from being interpreted as HTML.
- */
 function escapeHTML(value) {
+
     return value
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -303,7 +717,117 @@ function escapeHTML(value) {
 }
 
 
-/*
- * Start loading the catalogue immediately.
- */
+/* =========================================================
+   CALCULATE BUTTON
+   ========================================================= */
+
+form.addEventListener("submit", function(event) {
+
+    event.preventDefault();
+
+
+    if (!catalogueLoaded) {
+
+        result.innerHTML =
+            '<span class="error">The star catalogue is still loading. Please try again.</span>';
+
+        return;
+    }
+
+
+    const name1 =
+        document.getElementById("star1").value.trim();
+
+    const name2 =
+        document.getElementById("star2").value.trim();
+
+
+    if (!name1 || !name2) {
+
+        result.innerHTML =
+            '<span class="error">Please enter both star names.</span>';
+
+        return;
+    }
+
+
+    const star1 = findStar(name1);
+    const star2 = findStar(name2);
+
+
+    if (!star1) {
+
+        result.innerHTML =
+            `Sorry. Star <span class="star-name">${escapeHTML(name1)}</span> ` +
+            `was not found in our database. ` +
+            `Please recheck its spelling, or consider using an ` +
+            `alternate designation (HIP or HD).`;
+
+        return;
+    }
+
+
+    if (!star2) {
+
+        result.innerHTML =
+            `Sorry. Star <span class="star-name">${escapeHTML(name2)}</span> ` +
+            `was not found in our database. ` +
+            `Please recheck its spelling, or consider using an ` +
+            `alternate designation (HIP or HD).`;
+
+        return;
+    }
+
+
+    /*
+     * Same underlying catalogue entry.
+     *
+     * This catches:
+     *
+     * Sirius + Sirius
+     * Sirius + HIP 32349
+     * HD 48915 + HIP 32349
+     *
+     * etc.
+     */
+    if (star1 === star2) {
+
+        result.innerHTML =
+            '<span class="error">' +
+            'Sorry. Both the stars are the same. ' +
+            'Please select distinct stars.' +
+            '</span>';
+
+        return;
+    }
+
+
+    const distance =
+        calculateDistance(star1, star2);
+
+
+    result.innerHTML =
+        `The distance between ` +
+        `<span class="star-name">${escapeHTML(getStarName(star1))}</span> ` +
+        `and ` +
+        `<span class="star-name">${escapeHTML(getStarName(star2))}</span> ` +
+        `is ` +
+        `<span class="distance">${distance.toLocaleString()} light-years.</span>`;
+});
+
+
+/* =========================================================
+   INITIALIZE
+   ========================================================= */
+
+setupAutocomplete(
+    "star1",
+    "suggestions1"
+);
+
+setupAutocomplete(
+    "star2",
+    "suggestions2"
+);
+
 loadCatalogue();
