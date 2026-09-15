@@ -857,7 +857,74 @@ if (!container) {
 container.style.display = "block";
 
 const scene = new THREE.Scene();
+function starToPosition(star) {
 
+    const distance = 3.26 * star.dist;
+
+    const ra = star.ra * 15 * Math.PI / 180;
+    const dec = star.dec * Math.PI / 180;
+
+    return new THREE.Vector3(
+        distance * Math.cos(dec) * Math.cos(ra),
+        distance * Math.sin(dec),
+        distance * Math.cos(dec) * Math.sin(ra)
+    );
+}
+
+
+function addMapStar(position, size, material) {
+
+    const geometry = new THREE.SphereGeometry(
+        size,
+        16,
+        16
+    );
+
+    const mesh = new THREE.Mesh(
+        geometry,
+        material
+    );
+
+    mesh.position.copy(position);
+
+    scene.add(mesh);
+
+    return mesh;
+}
+
+
+const solPosition = new THREE.Vector3(0, 0, 0);
+
+const star1Position = starToPosition(star1);
+const star2Position = starToPosition(star2);
+
+
+const solMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffd966
+});
+
+const starMaterial = new THREE.MeshBasicMaterial({
+    color: 0x87d8ff
+});
+
+
+addMapStar(
+    solPosition,
+    0.18,
+    solMaterial
+);
+
+addMapStar(
+    star1Position,
+    0.14,
+    starMaterial
+);
+
+addMapStar(
+    star2Position,
+    0.14,
+    starMaterial
+);
     const camera = new THREE.PerspectiveCamera(
         60,
         container.clientWidth / container.clientHeight,
@@ -865,7 +932,16 @@ const scene = new THREE.Scene();
         10000
     );
 
-    camera.position.set(0, 0, 10);
+    const maximumDistance = Math.max(
+    star1Position.length(),
+    star2Position.length()
+);
+
+camera.position.set(
+    0,
+    0,
+    Math.max(5, maximumDistance * 1.8)
+);
    const controls = new THREE.OrbitControls(
     camera,
     container
