@@ -303,56 +303,7 @@ function findStar(name) {
    AUTOCOMPLETE
    ========================================================= */
 
-function getSuggestions(query) {
-
-    const normalizedQuery = normalize(query);
-
-    if (!normalizedQuery) {
-        return [];
-    }
-
-
-    /*
-     * Keep track of stars we've already returned.
-     *
-     * A star can have many matching designations, but
-     * we only want one suggestion for that star.
-     */
-    const foundStars = new Set();
-
-    const suggestions = [];
-
-
-    /*
-     * Search every designation.
-     *
-     * We use startsWith() because autocomplete should
-     * react to the beginning of a designation.
-     */
-    for (const entry of searchEntries) {
-
-        if (!entry.normalized.startsWith(normalizedQuery)) {
-            continue;
-        }
-
-        if (foundStars.has(entry.star)) {
-            continue;
-        }
-
-        foundStars.add(entry.star);
-
-        suggestions.push(entry.star);
-
-        /*
-         * Don't fill the screen with hundreds of results.
-         */
-        if (suggestions.length >= 8) {
-            break;
-        }
-    }
-
-    return suggestions;
-}
+getsu
 
 
 /* =========================================================
@@ -580,23 +531,42 @@ function setupAutocomplete(inputId, suggestionsId) {
         }
 
 
-        else if (event.key === "Enter") {
+       else if (event.key === "Tab") {
 
-            if (selectedIndex >= 0 &&
-                selectedIndex < items.length) {
+    /*
+     * Tab cycles through autocomplete suggestions instead
+     * of immediately leaving the input field.
+     */
+    if (items.length > 0) {
 
-                event.preventDefault();
+        event.preventDefault();
 
-                const suggestions =
-                    getSuggestions(input.value);
+        selectedIndex =
+            (selectedIndex + 1) % items.length;
 
-                if (suggestions[selectedIndex]) {
-                    selectSuggestion(
-                        suggestions[selectedIndex]
-                    );
-                }
-            }
+        updateHighlight();
+    }
+}
+
+
+else if (event.key === "Enter") {
+
+    if (selectedIndex >= 0 &&
+        selectedIndex < items.length) {
+
+        event.preventDefault();
+
+        const suggestions =
+            getSuggestions(input.value);
+
+        if (suggestions[selectedIndex]) {
+
+            selectSuggestion(
+                suggestions[selectedIndex]
+            );
         }
+    }
+}
 
 
         else if (event.key === "Escape") {
