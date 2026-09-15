@@ -1893,21 +1893,19 @@ function initializeStarMap(star1, star2) {
     );
 
 
-    nearbyStars
-        .slice(0, 12)
-        .forEach(entry => {
+   backgroundStars
+    .slice(0, 12)
+    .forEach(entry => {
 
-            backgroundLabels.push(
-                createLabel(
-                    getStarName(
-                        entry.star
-                    ),
-                    entry.sprite,
-                    false
-                )
-            );
+        backgroundLabels.push(
+            createLabel(
+                entry.name,
+                entry.sprite,
+                false
+            )
+        );
 
-        });
+    });
 
 
     /* =====================================================
