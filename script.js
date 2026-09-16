@@ -1359,7 +1359,7 @@ const screenUp =
             defaultViewDirection
         )
         .normalize()
-        .negate();
+       
 
 
 camera.up.copy(
