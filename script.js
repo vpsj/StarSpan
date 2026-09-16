@@ -307,13 +307,30 @@ function getSuggestions(query) {
 
     const normalizedQuery = normalize(query);
 
+    /*
+     * Empty input shows a small default selection.
+     * Typing continues to use the full catalogue index.
+     */
     if (!normalizedQuery) {
-        return [];
+
+        return stars
+            .filter(star =>
+                Number.isFinite(star.dist) &&
+                star.dist > 0
+            )
+            .slice()
+            .sort((a, b) =>
+                a.dist - b.dist
+            )
+            .slice(0, 8);
     }
 
+
     const foundStars = new Set();
+
     const prefixMatches = [];
     const partialMatches = [];
+
 
     for (const entry of searchEntries) {
 
@@ -321,25 +338,40 @@ function getSuggestions(query) {
             continue;
         }
 
-        if (entry.normalized.startsWith(normalizedQuery)) {
+
+        if (
+            entry.normalized
+                .startsWith(normalizedQuery)
+        ) {
 
             foundStars.add(entry.star);
-            prefixMatches.push(entry.star);
+
+            prefixMatches.push(
+                entry.star
+            );
 
         }
 
-        else if (entry.normalized.includes(normalizedQuery)) {
+        else if (
+            entry.normalized
+                .includes(normalizedQuery)
+        ) {
 
             foundStars.add(entry.star);
-            partialMatches.push(entry.star);
+
+            partialMatches.push(
+                entry.star
+            );
+
         }
+
     }
+
 
     return prefixMatches
         .concat(partialMatches)
         .slice(0, 8);
 }
-
 
 /* =========================================================
    FORMAT DESIGNATIONS
@@ -417,10 +449,10 @@ function setupAutocomplete(inputId, suggestionsId) {
 
         const query = input.value.trim();
 
-        if (!catalogueLoaded || !query) {
-            hideSuggestions();
-            return;
-        }
+        if (!catalogueLoaded) {
+          hideSuggestions();
+          return;
+      }
 
 
         const suggestions = getSuggestions(query);
@@ -522,7 +554,11 @@ function setupAutocomplete(inputId, suggestionsId) {
         showSuggestions();
 
     });
+   input.addEventListener("focus", function() {
 
+    showSuggestions();
+
+   });
 
     input.addEventListener("keydown", function(event) {
 
@@ -943,18 +979,299 @@ function initializeStarMap(star1, star2) {
     );
 
 
-    const cameraDistance =
-        Math.max(
-            5,
-            mapRadius * 2.8
+   const cameraDistance =
+    Math.max(
+        5,
+        mapRadius * 2.8
+    );
+
+
+/*
+ * =========================================================
+ * GALACTIC COORDINATE FRAME
+ * =========================================================
+ *
+ * J2000 Galactic north pole:
+ *
+ * RA  = 192.85948°
+ * Dec = +27.12825°
+ *
+ * Galactic Centre:
+ *
+ * RA  = 266.40510°
+ * Dec = -28.936175°
+ *
+ * Our Cartesian system is:
+ *
+ * X = RA 0°, Dec 0°
+ * Y = Dec +90°
+ * Z = RA 90°, Dec 0°
+ */
+
+
+/*
+ * Unit vector toward Galactic North.
+ */
+const galacticNorth =
+    new THREE.Vector3(
+        -0.86766615,
+         0.45598378,
+        -0.19807637
+    ).normalize();
+
+
+/*
+ * Unit vector toward the Galactic Centre.
+ */
+const galacticCenterDirection =
+    new THREE.Vector3(
+        -0.05487396,
+        -0.48383503,
+        -0.87343718
+    ).normalize();
+
+
+/* =====================================================
+   GALACTIC PLANE
+   ===================================================== */
+
+const galacticPlaneGroup =
+    new THREE.Group();
+
+
+/*
+ * Make the plane large enough to encompass
+ * the displayed star system.
+ */
+const planeRadius =
+    Math.max(
+        20,
+        star1Position.length(),
+        star2Position.length()
+    ) * 1.20;
+
+
+const planeMaterial =
+    new THREE.LineBasicMaterial({
+        color: 0x78a8c8,
+        transparent: true,
+        opacity: 0.075,
+        depthWrite: false
+    });
+
+
+const galacticPlaneObjects = [];
+
+
+function addPlaneLine(
+    points,
+    opacity = null
+) {
+
+    const geometry =
+        new THREE.BufferGeometry()
+            .setFromPoints(points);
+
+
+    const material =
+        opacity === null
+            ? planeMaterial
+            : new THREE.LineBasicMaterial({
+                color: 0x9bcdf0,
+                transparent: true,
+                opacity: opacity,
+                depthWrite: false
+            });
+
+
+    const line =
+        new THREE.Line(
+            geometry,
+            material
         );
 
 
-    camera.position.set(
-        mapCenter.x,
-        mapCenter.y,
-        mapCenter.z + cameraDistance
+    galacticPlaneGroup.add(
+        line
     );
+
+    galacticPlaneObjects.push(
+        line
+    );
+
+    return line;
+}
+
+
+/*
+ * Concentric rings.
+ *
+ * These represent increasing distance
+ * from Sol within the Galactic Plane.
+ */
+[0.25, 0.50, 0.75, 1.00]
+    .forEach(fraction => {
+
+        const points = [];
+        const segments = 128;
+
+        const radius =
+            planeRadius * fraction;
+
+
+        for (
+            let i = 0;
+            i <= segments;
+            i++
+        ) {
+
+            const angle =
+                (i / segments) *
+                Math.PI *
+                2;
+
+
+            points.push(
+                new THREE.Vector3(
+                    Math.cos(angle) * radius,
+                    0,
+                    Math.sin(angle) * radius
+                )
+            );
+
+        }
+
+
+        addPlaneLine(
+            points
+        );
+
+    });
+
+
+/*
+ * Galactic longitude spokes.
+ */
+const spokeCount = 24;
+
+
+for (
+    let i = 0;
+    i < spokeCount;
+    i++
+) {
+
+    const angle =
+        (i / spokeCount) *
+        Math.PI *
+        2;
+
+
+    addPlaneLine([
+        new THREE.Vector3(
+            0,
+            0,
+            0
+        ),
+
+        new THREE.Vector3(
+            Math.cos(angle) *
+                planeRadius,
+
+            0,
+
+            Math.sin(angle) *
+                planeRadius
+        )
+
+    ]);
+
+}
+
+
+/*
+ * Orient the plane so its local X axis points
+ * directly toward the real Galactic Centre and
+ * its local Y axis points toward Galactic North.
+ */
+const planeZAxis =
+    galacticCenterDirection
+        .clone()
+        .cross(
+            galacticNorth
+        )
+        .normalize();
+
+
+const planeBasis =
+    new THREE.Matrix4()
+        .makeBasis(
+            galacticCenterDirection,
+            galacticNorth,
+            planeZAxis
+        );
+
+
+galacticPlaneGroup
+    .quaternion
+    .setFromRotationMatrix(
+        planeBasis
+    );
+
+
+galacticPlaneGroup.position.copy(
+    solPosition
+);
+
+
+/*
+ * Highlight the l = 0° direction.
+ *
+ * This line points directly toward
+ * the Galactic Centre.
+ */
+addPlaneLine(
+    [
+        new THREE.Vector3(
+            -planeRadius,
+            0,
+            0
+        ),
+
+        new THREE.Vector3(
+            planeRadius,
+            0,
+            0
+        )
+    ],
+    0.16
+);
+
+
+scene.add(
+    galacticPlaneGroup
+);
+
+
+/*
+ * Start the camera looking toward the
+ * Galactic Centre.
+ *
+ * Since the camera sits on the opposite side
+ * of the map, its forward direction is toward
+ * Galactic Centre.
+ */
+camera.position.copy(
+    mapCenter
+        .clone()
+        .sub(
+            galacticCenterDirection
+                .clone()
+                .multiplyScalar(
+                    cameraDistance
+                )
+        )
+);
 
 
     /* =====================================================
@@ -1201,7 +1518,57 @@ function initializeStarMap(star1, star2) {
         tooltip.style.display =
             "none";
     }
+   /*
+ * =========================================================
+ * MOBILE INFORMATION PANEL
+ * =========================================================
+ *
+ * This is deliberately fixed inside the map.
+ * It never follows the user's finger.
+ */
+const mobileInfo =
+    document.createElement("div");
 
+
+mobileInfo.className =
+    "star-map-mobile-info";
+
+
+mobileInfo.setAttribute(
+    "aria-live",
+    "polite"
+);
+
+
+mobileInfo.style.display =
+    "none";
+
+
+container.appendChild(
+    mobileInfo
+);
+
+
+function showMobileInfo(
+    title,
+    detail
+) {
+
+    mobileInfo.innerHTML =
+        `<strong>${escapeHTML(title)}</strong>` +
+        `<span>${escapeHTML(detail)}</span>`;
+
+
+    mobileInfo.style.display =
+        "block";
+}
+
+
+function hideMobileInfo() {
+
+    mobileInfo.style.display =
+        "none";
+}
 
     /* =====================================================
        STAR COLOURS
@@ -2008,276 +2375,291 @@ panoramaLoader.load(
     }
 
 
-    function handlePointer(
-        event,
-        isClick
+    /*
+ * =========================================================
+ * FIND MAP INTERACTION
+ * =========================================================
+ *
+ * This only identifies what the user touched.
+ * It does not move the camera or display anything.
+ */
+function findInteraction(event) {
+
+    const position =
+        setPointer(event);
+
+
+    /*
+     * First check the three important stars.
+     */
+    let closestVertex = null;
+
+    let closestVertexDistance =
+        Infinity;
+
+
+    vertexData.forEach(
+        vertex => {
+
+            const projected =
+                projectToScreen(
+                    vertex.position
+                );
+
+
+            if (
+                projected.z < -1 ||
+                projected.z > 1
+            ) {
+                return;
+            }
+
+
+            const distance =
+                Math.hypot(
+                    position.x -
+                        projected.x,
+
+                    position.y -
+                        projected.y
+                );
+
+
+            if (
+                distance < 26 &&
+                distance <
+                    closestVertexDistance
+            ) {
+
+                closestVertex =
+                    vertex;
+
+                closestVertexDistance =
+                    distance;
+
+            }
+
+        }
+    );
+
+
+    if (closestVertex) {
+
+        return {
+            type: "vertex",
+            vertex: closestVertex,
+            position: position
+        };
+
+    }
+
+
+    /*
+     * Then check triangle edges.
+     */
+    let closestLine = null;
+
+    let closestLineDistance =
+        Infinity;
+
+
+    triangleLines.forEach(
+        data => {
+
+            const start =
+                projectToScreen(
+                    data.start
+                );
+
+
+            const end =
+                projectToScreen(
+                    data.end
+                );
+
+
+            if (
+                start.z < -1 ||
+                start.z > 1 ||
+                end.z < -1 ||
+                end.z > 1
+            ) {
+                return;
+            }
+
+
+            const distance =
+                distanceToSegment(
+                    position,
+                    start,
+                    end
+                );
+
+
+            if (
+                distance < 12 &&
+                distance <
+                    closestLineDistance
+            ) {
+
+                closestLine =
+                    data;
+
+                closestLineDistance =
+                    distance;
+
+            }
+
+        }
+    );
+
+
+    if (closestLine) {
+
+        return {
+            type: "line",
+            line: closestLine,
+            position: position
+        };
+
+    }
+
+
+    /*
+     * Finally check real nearby stars.
+     */
+    raycaster.setFromCamera(
+        pointer,
+        camera
+    );
+
+
+    const backgroundObjects =
+        backgroundStars.map(
+            entry =>
+                entry.sprite
+        );
+
+
+    const intersections =
+        raycaster.intersectObjects(
+            backgroundObjects
+        );
+
+
+    if (
+        intersections.length > 0
     ) {
 
-        const position =
-            setPointer(event);
+        const sprite =
+            intersections[0].object;
 
 
-        /*
-         * First check the three important stars.
-         */
-        let closestVertex = null;
-
-        let closestVertexDistance =
-            Infinity;
-
-
-        vertexData.forEach(
-            vertex => {
-
-                const projected =
-                    projectToScreen(
-                        vertex.position
-                    );
-
-
-                if (
-                    projected.z < -1 ||
-                    projected.z > 1
-                ) {
-                    return;
-                }
-
-
-                const distance =
-                    Math.hypot(
-                        position.x -
-                            projected.x,
-                        position.y -
-                            projected.y
-                    );
-
-
-                if (
-                    distance < 22 &&
-                    distance <
-                        closestVertexDistance
-                ) {
-
-                    closestVertex =
-                        vertex;
-
-                    closestVertexDistance =
-                        distance;
-
-                }
-
-            }
-        );
-
-
-        if (closestVertex) {
-
-            resetLineHighlight();
-
-            showTooltip(
-                closestVertex.name,
-                `Angle: ${
-                    calculateVertexAngle(
-                        closestVertex
-                    ).toFixed(3)
-                }°`
-            );
-
-
-            moveTooltip(
-                position.x,
-                position.y
-            );
-
-
-            if (isClick) {
-
-                controls.target.copy(
-                    closestVertex.position
-                );
-
-                controls.update();
-
-            }
-
-
-            return true;
-        }
-
-
-        /*
-         * Then check triangle edges.
-         */
-        let closestLine = null;
-
-        let closestLineDistance =
-            Infinity;
-
-
-        triangleLines.forEach(
-            data => {
-
-                const start =
-                    projectToScreen(
-                        data.start
-                    );
-
-                const end =
-                    projectToScreen(
-                        data.end
-                    );
-
-
-                if (
-                    start.z < -1 ||
-                    start.z > 1 ||
-                    end.z < -1 ||
-                    end.z > 1
-                ) {
-                    return;
-                }
-
-
-                const distance =
-                    distanceToSegment(
-                        position,
-                        start,
-                        end
-                    );
-
-
-                if (
-                    distance < 10 &&
-                    distance <
-                        closestLineDistance
-                ) {
-
-                    closestLine =
-                        data;
-
-                    closestLineDistance =
-                        distance;
-
-                }
-
-            }
-        );
-
-
-        if (closestLine) {
-
-            resetLineHighlight();
-
-            closestLine
-                .line
-                .material
-                .opacity = 0.35;
-
-            activeLine =
-                closestLine;
-
-
-            showTooltip(
-                `${closestLine.name1} ↔ ${closestLine.name2}`,
-                `Distance: ${
-                    closestLine.distance
-                        .toFixed(3)
-                } light-years`
-            );
-
-
-            moveTooltip(
-                position.x,
-                position.y
-            );
-
-
-            return true;
-        }
-
-
-        /*
-         * Finally check real background stars.
-         */
-        raycaster.setFromCamera(
-            pointer,
-            camera
-        );
-
-
-        const backgroundObjects =
-            backgroundStars.map(
+        const background =
+            backgroundStars.find(
                 entry =>
-                    entry.sprite
+                    entry.sprite ===
+                    sprite
             );
 
 
-        const intersections =
-            raycaster.intersectObjects(
-                backgroundObjects
-            );
+        if (background) {
 
-
-        if (
-            intersections.length > 0
-        ) {
-
-            const sprite =
-                intersections[0].object;
-
-
-            const background =
-                backgroundStars.find(
-                    entry =>
-                        entry.sprite ===
-                        sprite
-                );
-
-
-            if (background) {
-
-                resetLineHighlight();
-
-
-                showTooltip(
-                    background.name,
-                    `${background.distance.toFixed(2)} light-years from Sol`
-                );
-
-
-                moveTooltip(
-                    position.x,
-                    position.y
-                );
-
-
-                if (isClick) {
-
-                    controls.target.copy(
-                        background.position
-                    );
-
-                    controls.update();
-
-                }
-
-
-                return true;
-            }
+            return {
+                type: "background",
+                background: background,
+                position: position
+            };
 
         }
 
+    }
 
-        /*
-         * Nothing was selected.
-         */
+
+    return {
+        type: "none",
+        position: position
+    };
+}
+
+
+/*
+ * =========================================================
+ * DESKTOP LABEL HIGHLIGHTING
+ * =========================================================
+ */
+
+function setHoveredImportantStar(
+    vertex
+) {
+
+    importantLabels.forEach(
+        data => {
+
+            data.label.classList.toggle(
+                "hovered",
+
+                Boolean(
+                    vertex &&
+                    data.sprite.position ===
+                        vertex.position
+                )
+            );
+
+        }
+    );
+
+}
+
+
+/*
+ * =========================================================
+ * DESKTOP INTERACTION
+ * =========================================================
+ */
+
+function handlePointer(
+    event,
+    isClick
+) {
+
+    const interaction =
+        findInteraction(event);
+
+
+    if (
+        interaction.type ===
+        "vertex"
+    ) {
+
         resetLineHighlight();
-        hideTooltip();
+
+        setHoveredImportantStar(
+            interaction.vertex
+        );
+
+
+        showTooltip(
+            interaction.vertex.name,
+
+            `Angle: ${
+                calculateVertexAngle(
+                    interaction.vertex
+                ).toFixed(3)
+            }°`
+        );
+
+
+        moveTooltip(
+            interaction.position.x,
+            interaction.position.y
+        );
+
 
         if (isClick) {
 
             controls.target.copy(
-                mapCenter
+                interaction.vertex.position
             );
 
             controls.update();
@@ -2285,9 +2667,539 @@ panoramaLoader.load(
         }
 
 
-        return false;
+        return true;
     }
 
+
+    setHoveredImportantStar(
+        null
+    );
+
+
+    if (
+        interaction.type ===
+        "line"
+    ) {
+
+        resetLineHighlight();
+
+        interaction.line
+            .line
+            .material
+            .opacity = 0.35;
+
+
+        activeLine =
+            interaction.line;
+
+
+        showTooltip(
+            `${interaction.line.name1} ↔ ${interaction.line.name2}`,
+
+            `Distance: ${
+                interaction.line.distance
+                    .toFixed(3)
+            } light-years`
+        );
+
+
+        moveTooltip(
+            interaction.position.x,
+            interaction.position.y
+        );
+
+
+        return true;
+    }
+
+
+    if (
+        interaction.type ===
+        "background"
+    ) {
+
+        resetLineHighlight();
+
+
+        showTooltip(
+            interaction.background.name,
+
+            `${interaction.background.distance.toFixed(2)} light-years from Sol`
+        );
+
+
+        moveTooltip(
+            interaction.position.x,
+            interaction.position.y
+        );
+
+
+        if (isClick) {
+
+            controls.target.copy(
+                interaction.background.position
+            );
+
+            controls.update();
+
+        }
+
+
+        return true;
+    }
+
+
+    resetLineHighlight();
+
+    hideTooltip();
+
+
+    if (isClick) {
+
+        controls.target.copy(
+            mapCenter
+        );
+
+        controls.update();
+
+    }
+
+
+    return false;
+}
+
+
+/*
+ * =========================================================
+ * MOBILE TOUCH INTERACTION
+ * =========================================================
+ *
+ * Single tap  = inspect
+ * Double tap  = centre on star
+ * Drag        = rotate
+ * Pinch       = zoom
+ */
+
+let touchStart = null;
+
+let lastTapTime = 0;
+
+let lastTapKey = null;
+
+
+function getInteractionKey(
+    interaction
+) {
+
+    if (
+        interaction.type ===
+        "vertex"
+    ) {
+
+        return `vertex:${interaction.vertex.name}`;
+
+    }
+
+
+    if (
+        interaction.type ===
+        "background"
+    ) {
+
+        return `background:${interaction.background.name}`;
+
+    }
+
+
+    if (
+        interaction.type ===
+        "line"
+    ) {
+
+        return `line:${interaction.line.name1}:${interaction.line.name2}`;
+
+    }
+
+
+    return "none";
+}
+
+
+function centerOnInteraction(
+    interaction
+) {
+
+    if (
+        interaction.type ===
+        "vertex"
+    ) {
+
+        controls.target.copy(
+            interaction.vertex.position
+        );
+
+    }
+
+    else if (
+        interaction.type ===
+        "background"
+    ) {
+
+        controls.target.copy(
+            interaction.background.position
+        );
+
+    }
+
+
+    controls.update();
+
+}
+
+
+function showTouchInformation(
+    interaction
+) {
+
+    if (
+        interaction.type ===
+        "vertex"
+    ) {
+
+        const distanceFromSol =
+            interaction.vertex.position.length();
+
+
+        const distanceText =
+            distanceFromSol === 0
+                ? "At Sol"
+                : `${distanceFromSol.toFixed(2)} light-years from Sol`;
+
+
+        showMobileInfo(
+            interaction.vertex.name,
+
+            `${distanceText} • Angle: ${
+                calculateVertexAngle(
+                    interaction.vertex
+                ).toFixed(3)
+            }°`
+        );
+
+
+        return;
+    }
+
+
+    if (
+        interaction.type ===
+        "line"
+    ) {
+
+        showMobileInfo(
+            `${interaction.line.name1} ↔ ${interaction.line.name2}`,
+
+            `Distance: ${
+                interaction.line.distance
+                    .toFixed(3)
+            } light-years`
+        );
+
+
+        return;
+    }
+
+
+    if (
+        interaction.type ===
+        "background"
+    ) {
+
+        showMobileInfo(
+            interaction.background.name,
+
+            `${interaction.background.distance.toFixed(2)} light-years from Sol`
+        );
+
+
+        return;
+    }
+
+
+    hideMobileInfo();
+
+}
+
+
+function handleTouchDown(
+    event
+) {
+
+    if (
+        event.pointerType !==
+        "touch"
+    ) {
+        return;
+    }
+
+
+    touchStart = {
+
+        x: event.clientX,
+
+        y: event.clientY,
+
+        time: performance.now()
+
+    };
+
+}
+
+
+function handleTouchUp(
+    event
+) {
+
+    if (
+        event.pointerType !==
+            "touch" ||
+        !touchStart
+    ) {
+
+        return;
+    }
+
+
+    const movement =
+        Math.hypot(
+
+            event.clientX -
+                touchStart.x,
+
+            event.clientY -
+                touchStart.y
+
+        );
+
+
+    const duration =
+        performance.now() -
+        touchStart.time;
+
+
+    touchStart = null;
+
+
+    /*
+     * Movement means this was a drag.
+     * OrbitControls handles it.
+     */
+    if (
+        movement > 12 ||
+        duration > 600
+    ) {
+
+        return;
+    }
+
+
+    const interaction =
+        findInteraction(event);
+
+
+    if (
+        interaction.type ===
+        "none"
+    ) {
+
+        hideMobileInfo();
+
+        lastTapTime = 0;
+
+        lastTapKey = null;
+
+        return;
+    }
+
+
+    const key =
+        getInteractionKey(
+            interaction
+        );
+
+
+    const now =
+        performance.now();
+
+
+    const isDoubleTap =
+        key === lastTapKey &&
+        now - lastTapTime < 350;
+
+
+    if (isDoubleTap) {
+
+        /*
+         * Only stars have useful camera targets.
+         */
+        if (
+            interaction.type ===
+                "vertex" ||
+
+            interaction.type ===
+                "background"
+        ) {
+
+            centerOnInteraction(
+                interaction
+            );
+
+        }
+
+
+        lastTapTime = 0;
+
+        lastTapKey = null;
+
+        return;
+    }
+
+
+    showTouchInformation(
+        interaction
+    );
+
+
+    lastTapTime = now;
+
+    lastTapKey = key;
+
+}
+
+
+function handleTouchCancel(
+    event
+) {
+
+    if (
+        event.pointerType ===
+        "touch"
+    ) {
+
+        touchStart = null;
+
+    }
+
+}
+
+
+/*
+ * =========================================================
+ * POINTER EVENT HANDLERS
+ * =========================================================
+ */
+
+function handlePointerMove(
+    event
+) {
+
+    /*
+     * Touch has no hover state.
+     */
+    if (
+        event.pointerType ===
+        "touch"
+    ) {
+
+        return;
+    }
+
+
+    handlePointer(
+        event,
+        false
+    );
+
+}
+
+
+function handlePointerLeave() {
+
+    resetLineHighlight();
+
+    hideTooltip();
+
+    setHoveredImportantStar(
+        null
+    );
+
+}
+
+
+function handlePointerDown(
+    event
+) {
+
+    if (
+        event.pointerType ===
+        "touch"
+    ) {
+
+        handleTouchDown(
+            event
+        );
+
+        return;
+    }
+
+
+    handlePointer(
+        event,
+        true
+    );
+
+}
+
+
+function handlePointerUp(
+    event
+) {
+
+    handleTouchUp(
+        event
+    );
+
+}
+
+
+renderer.domElement.addEventListener(
+    "pointermove",
+    handlePointerMove
+);
+
+
+renderer.domElement.addEventListener(
+    "pointerleave",
+    handlePointerLeave
+);
+
+
+renderer.domElement.addEventListener(
+    "pointerdown",
+    handlePointerDown
+);
+
+
+renderer.domElement.addEventListener(
+    "pointerup",
+    handlePointerUp
+);
+
+
+renderer.domElement.addEventListener(
+    "pointercancel",
+    handleTouchCancel
+);
 
     function calculateVertexAngle(
         vertex
@@ -2330,52 +3242,6 @@ panoramaLoader.load(
     }
 
 
-    function handlePointerMove(event) {
-
-    handlePointer(
-        event,
-        false
-    );
-
-}
-
-
-function handlePointerLeave() {
-
-    resetLineHighlight();
-    hideTooltip();
-
-}
-
-
-function handlePointerDown(event) {
-
-    handlePointer(
-        event,
-        true
-    );
-
-}
-
-
-renderer.domElement.addEventListener(
-    "pointermove",
-    handlePointerMove
-);
-
-
-renderer.domElement.addEventListener(
-    "pointerleave",
-    handlePointerLeave
-);
-
-
-renderer.domElement.addEventListener(
-    "pointerdown",
-    handlePointerDown
-);
-
-
     /* =====================================================
        LABEL POSITIONING
        ===================================================== */
@@ -2412,7 +3278,19 @@ renderer.domElement.addEventListener(
 
         data.label.style.top =
             `${projected.y}px`;
+       /*
+ * Important labels remain faintly visible at all times.
+ * CSS controls the hover transition to full opacity.
+ */
+if (
+    data.label.classList.contains(
+        "important-label"
+    )
+) {
 
+    data.label.style.opacity = "";
+
+}
     }
 
 
@@ -2587,7 +3465,15 @@ renderer.domElement.addEventListener(
                 "pointerdown",
                 handlePointerDown
             );
+            renderer.domElement.removeEventListener(
+             "pointerup",
+             handlePointerUp
+            );
 
+            renderer.domElement.removeEventListener(
+             "pointercancel",
+             handleTouchCancel
+            );
             controls.dispose();
 
             mapActive = false;
@@ -2600,7 +3486,30 @@ renderer.domElement.addEventListener(
 
                 panoramaTexture = null;
             }
+            galacticPlaneObjects.forEach(
+    object => {
 
+        object.geometry.dispose();
+
+        if (
+            object.material !==
+            planeMaterial
+        ) {
+
+            object.material.dispose();
+
+        }
+
+    }
+);
+
+
+planeMaterial.dispose();
+
+
+scene.remove(
+    galacticPlaneGroup
+);
             triangleLines.forEach(
                 data => {
 
@@ -2629,7 +3538,7 @@ renderer.domElement.addEventListener(
             );
 
             tooltip.remove();
-
+            mobileInfo.remove();
             starTexture.dispose();
 
             renderer.dispose();
