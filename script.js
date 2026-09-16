@@ -1922,7 +1922,7 @@ function hideMobileInfo() {
                     transparent: true,
 
                     depthWrite: false,
-                    depthTest: false
+                    depthTest: false,
 
                     opacity:
                         0.32 +
