@@ -2329,12 +2329,11 @@ panoramaLoader.load(
          * exactly the same as the coordinate grid.
          */
         const panoramaLongitudeOffset =
-            Math.PI;
+          0;
 
-
-        panoramaSphere.rotateY(
-            panoramaLongitudeOffset
-        );
+          panoramaSphere.rotateY(
+          panoramaLongitudeOffset
+      );
 
 
         scene.add(
