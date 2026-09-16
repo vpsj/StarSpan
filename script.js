@@ -1780,72 +1780,147 @@ function createTriangleLine(
      *
      * Completely separate from the PC line.
      */
-    let mobileLine = null;
+  let mobileLine = null;
+let mobileHighlightLine = null;
 
-    const isTouchDevice =
-        window.matchMedia(
-            "(hover: none) and (pointer: coarse)"
-        ).matches;
-
-
-    if (isTouchDevice) {
-
-        const direction =
-            end.clone().sub(start);
-
-        const length =
-            direction.length();
-
-        const midpoint =
-            start.clone()
-                .add(end)
-                .multiplyScalar(0.5);
+const isTouchDevice =
+    window.matchMedia(
+        "(hover: none) and (pointer: coarse)"
+    ).matches;
 
 
-        const mobileGeometry =
-            new THREE.CylinderGeometry(
-                0.004,
-                0.004,
-                length,
-                8,
-                1,
-                false
-            );
+if (isTouchDevice) {
+
+    const direction =
+        end.clone().sub(start);
+
+    const length =
+        direction.length();
+
+    const midpoint =
+        start.clone()
+            .add(end)
+            .multiplyScalar(0.5);
 
 
-        const mobileMaterial =
-            new THREE.MeshBasicMaterial({
-                color: 0x9bdcff,
-                transparent: true,
-                opacity: 0.65,
-                depthWrite: false,
-                depthTest: false
-            });
+    /*
+     * -----------------------------------------------------
+     * NORMAL MOBILE LINE
+     * -----------------------------------------------------
+     */
 
-
-        mobileLine =
-            new THREE.Mesh(
-                mobileGeometry,
-                mobileMaterial
-            );
-
-
-        mobileLine.position.copy(
-            midpoint
+    const mobileGeometry =
+        new THREE.CylinderGeometry(
+            0.004,
+            0.004,
+            length,
+            8,
+            1,
+            false
         );
 
 
-        mobileLine.quaternion.setFromUnitVectors(
-            new THREE.Vector3(0, 1, 0),
-            direction.normalize()
+    const mobileMaterial =
+        new THREE.MeshBasicMaterial({
+            color: 0x9bdcff,
+            transparent: true,
+            opacity: 0.65,
+            depthWrite: false,
+            depthTest: false
+        });
+
+
+    mobileLine =
+        new THREE.Mesh(
+            mobileGeometry,
+            mobileMaterial
         );
 
 
-        scene.add(
-            mobileLine
+    /*
+     * -----------------------------------------------------
+     * HIGHLIGHT MOBILE LINE
+     * -----------------------------------------------------
+     *
+     * Same EXACT length.
+     * Only the radius is different.
+     */
+    const mobileHighlightGeometry =
+        new THREE.CylinderGeometry(
+            0.012,
+            0.012,
+            length,
+            8,
+            1,
+            false
         );
 
-    }
+
+    const mobileHighlightMaterial =
+        new THREE.MeshBasicMaterial({
+            color: 0x9bdcff,
+            transparent: true,
+            opacity: 1.0,
+            depthWrite: false,
+            depthTest: false
+        });
+
+
+    mobileHighlightLine =
+        new THREE.Mesh(
+            mobileHighlightGeometry,
+            mobileHighlightMaterial
+        );
+
+
+    /*
+     * Both cylinders have exactly the same
+     * position and orientation.
+     */
+    mobileLine.position.copy(
+        midpoint
+    );
+
+    mobileHighlightLine.position.copy(
+        midpoint
+    );
+
+
+    const quaternion =
+        new THREE.Quaternion();
+
+    quaternion.setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        direction.normalize()
+    );
+
+
+    mobileLine.quaternion.copy(
+        quaternion
+    );
+
+    mobileHighlightLine.quaternion.copy(
+        quaternion
+    );
+
+
+    /*
+     * Normal line visible.
+     * Highlight line hidden.
+     */
+    mobileLine.visible = true;
+    mobileHighlightLine.visible = false;
+
+
+    scene.add(
+        mobileLine
+    );
+
+    scene.add(
+        mobileHighlightLine
+    );
+
+}
 
 
     triangleLines.push({
@@ -1853,7 +1928,9 @@ function createTriangleLine(
         line: line,
 
         mobileLine: mobileLine,
-
+       
+        mobileHighlightLine: mobileHighlightLine,
+       
         start: start,
 
         end: end,
@@ -1867,10 +1944,6 @@ function createTriangleLine(
         baseOpacity: 0.035,
 
         mobileBaseOpacity: 0.65,
-
-        mobileBaseScale: 1,
-
-        mobileHighlightedScale: 3
 
     });
 
@@ -2427,16 +2500,15 @@ panoramaLoader.load(
 
                 if (data.mobileLine) {
 
-                    data.mobileLine.material.opacity =
-                        data.mobileBaseOpacity;
+                data.mobileLine.visible = true;
 
-                   data.mobileLine.scale.set(
-                   data.mobileBaseScale,
-                   1,
-                   data.mobileBaseScale
-                  );
+               }
 
-                }
+               if (data.mobileHighlightLine) {
+
+                data.mobileHighlightLine.visible = false;
+
+            }
 
             }
 
@@ -3187,17 +3259,17 @@ function handleTouchUp(
 
     resetLineHighlight(true);
 
-    if (interaction.line.mobileLine) {
+   if (interaction.line.mobileLine) {
 
-        interaction.line.mobileLine.material.opacity = 1.0;
+    interaction.line.mobileLine.visible = false;
 
-        interaction.line.mobileLine.scale.set(
-        interaction.line.mobileHighlightedScale,
-        1,
-        interaction.line.mobileHighlightedScale
-    );
+      }
 
-    }
+   if (interaction.line.mobileHighlightLine) {
+
+    interaction.line.mobileHighlightLine.visible = true;
+
+}
 
     activeLine = interaction.line;
 }
@@ -3651,10 +3723,17 @@ scene.remove(
 
         if (data.mobileLine) {
 
-            data.mobileLine.geometry.dispose();
-            data.mobileLine.material.dispose();
+    data.mobileLine.geometry.dispose();
+    data.mobileLine.material.dispose();
 
-        }
+}
+
+if (data.mobileHighlightLine) {
+
+    data.mobileHighlightLine.geometry.dispose();
+    data.mobileHighlightLine.material.dispose();
+
+}
 
     }
 );
