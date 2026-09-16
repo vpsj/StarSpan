@@ -3064,7 +3064,12 @@ function handleTouchUp(
         return;
     }
 
+    if (interaction.type === "line") {
+    resetLineHighlight();
 
+    interaction.line.line.material.opacity = 0.35;
+    activeLine = interaction.line;
+   }
     showTouchInformation(
         interaction
     );
