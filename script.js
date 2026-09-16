@@ -3172,31 +3172,28 @@ function handlePointerUp(
 }
 
 
-renderer.domElement.addEventListener(
+container.addEventListener(
     "pointermove",
     handlePointerMove
 );
 
-
-renderer.domElement.addEventListener(
+container.addEventListener(
     "pointerleave",
     handlePointerLeave
 );
 
-
-renderer.domElement.addEventListener(
+container.addEventListener(
     "pointerdown",
     handlePointerDown
 );
 
 
-renderer.domElement.addEventListener(
+container.addEventListener(
     "pointerup",
     handlePointerUp
 );
 
-
-renderer.domElement.addEventListener(
+container.addEventListener(
     "pointercancel",
     handleTouchCancel
 );
@@ -3451,28 +3448,28 @@ if (
                 handleResize
             );
 
-            renderer.domElement.removeEventListener(
+            container.removeEventListener(
                 "pointermove",
                 handlePointerMove
             );
 
-            renderer.domElement.removeEventListener(
+            container.removeEventListener(
                 "pointerleave",
                 handlePointerLeave
-            );
+             );
 
-            renderer.domElement.removeEventListener(
+            container.removeEventListener(
                 "pointerdown",
                 handlePointerDown
             );
-            renderer.domElement.removeEventListener(
-             "pointerup",
-             handlePointerUp
+            container.removeEventListener(
+                "pointerup",
+                handlePointerUp
             );
 
-            renderer.domElement.removeEventListener(
-             "pointercancel",
-             handleTouchCancel
+            container.removeEventListener(
+                "pointercancel",
+                handleTouchCancel
             );
             controls.dispose();
 
