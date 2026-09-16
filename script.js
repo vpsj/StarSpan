@@ -1254,15 +1254,19 @@ scene.add(
 
 
 /*
- * Start the camera looking toward the
- * Galactic Centre.
+ * =====================================================
+ * DEFAULT FRONT VIEW
+ * =====================================================
  *
- * Since the camera sits on the opposite side
- * of the map, its forward direction is toward
- * Galactic Centre.
+ * Start on the side opposite the Galactic Centre,
+ * looking directly toward it.
+ *
+ * This puts the queried local stars in the foreground
+ * with the Galactic Centre / Milky Way behind them.
  */
+
 camera.position.copy(
-    mapCenter
+    solPosition
         .clone()
         .sub(
             galacticCenterDirection
@@ -1271,6 +1275,10 @@ camera.position.copy(
                     cameraDistance
                 )
         )
+);
+
+camera.lookAt(
+    solPosition
 );
 
 
@@ -2130,13 +2138,16 @@ if (isTouchDevice) {
    ===================================================== */
 
 /*
- * The panorama is an equirectangular 360° image.
- * Three.js renders it as an infinite background,
- * so it does not need any geometry or thousands
- * of simulated background stars.
+ * Use the actual Milky Way panorama as a large sphere
+ * surrounding the star system.
+ *
+ * Unlike scene.background, a sphere can be rotated.
+ * This allows the panorama to use exactly the same
+ * Galactic coordinate orientation as the Galactic Plane.
  */
 
 let panoramaTexture = null;
+let panoramaSphere = null;
 let mapActive = true;
 
 const panoramaLoader =
@@ -2148,24 +2159,18 @@ panoramaLoader.load(
     function(texture) {
 
         /*
-         * The image is a normal JPG, so treat it
-         * as an sRGB colour texture.
+         * Normal JPG colour handling.
          */
         texture.encoding =
             THREE.sRGBEncoding;
 
         /*
-         * Tell Three.js that this is a 360°
-         * equirectangular panorama.
+         * Equirectangular 360° panorama.
          */
         texture.mapping =
             THREE.EquirectangularReflectionMapping;
 
 
-        /*
-         * The map may have been replaced before
-         * the image finished loading.
-         */
         if (!mapActive) {
 
             texture.dispose();
@@ -2177,8 +2182,64 @@ panoramaLoader.load(
         panoramaTexture =
             texture;
 
-        scene.background =
-            panoramaTexture;
+
+        /*
+         * Very large sphere surrounding the entire
+         * local star system.
+         *
+         * The camera remains inside this sphere.
+         */
+        const panoramaGeometry =
+            new THREE.SphereGeometry(
+                backdropRadius * 1.05,
+                96,
+                64
+            );
+
+
+        const panoramaMaterial =
+            new THREE.MeshBasicMaterial({
+
+                map:
+                    panoramaTexture,
+
+                side:
+                    THREE.BackSide
+
+            });
+
+
+        panoramaSphere =
+            new THREE.Mesh(
+                panoramaGeometry,
+                panoramaMaterial
+            );
+
+
+        /*
+         * Orient the panorama using the EXACT SAME
+         * Galactic coordinate basis as the Galactic Plane.
+         *
+         * Local X  = Galactic Centre
+         * Local Y  = Galactic North
+         * Local Z  = Galactic-plane perpendicular
+         */
+        panoramaSphere.quaternion.copy(
+            galacticPlaneGroup.quaternion
+        );
+
+
+        /*
+         * Keep the panorama centred on Sol.
+         */
+        panoramaSphere.position.copy(
+            solPosition
+        );
+
+
+        scene.add(
+            panoramaSphere
+        );
 
     },
 
@@ -2193,7 +2254,6 @@ panoramaLoader.load(
 
     }
 );
-
 
     /* =====================================================
        HTML LABELS
