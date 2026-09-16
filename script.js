@@ -2430,11 +2430,11 @@ panoramaLoader.load(
                     data.mobileLine.material.opacity =
                         data.mobileBaseOpacity;
 
-                    data.mobileLine.scale.set(
-                        data.mobileBaseScale,
-                        data.mobileBaseScale,
-                        data.mobileBaseScale
-                    );
+                   data.mobileLine.scale.set(
+                   data.mobileBaseScale,
+                   1,
+                   data.mobileBaseScale
+                  );
 
                 }
 
@@ -3192,10 +3192,10 @@ function handleTouchUp(
         interaction.line.mobileLine.material.opacity = 1.0;
 
         interaction.line.mobileLine.scale.set(
-            interaction.line.mobileHighlightedScale,
-            interaction.line.mobileHighlightedScale,
-            interaction.line.mobileHighlightedScale
-        );
+        interaction.line.mobileHighlightedScale,
+        1,
+        interaction.line.mobileHighlightedScale
+    );
 
     }
 
