@@ -1733,8 +1733,7 @@ function hideMobileInfo() {
 
     const triangleLines = [];
 
-
-  function createTriangleLine(
+function createTriangleLine(
     start,
     end,
     name1,
@@ -1742,60 +1741,118 @@ function hideMobileInfo() {
     distance
 ) {
 
-    const direction =
-        end.clone().sub(start);
-
-    const length =
-        direction.length();
-
-    const midpoint =
-        start.clone().add(end).multiplyScalar(0.5);
-
-
+    /*
+     * =====================================================
+     * PC TRIANGLE
+     * =====================================================
+     *
+     * This is the original PC implementation.
+     * DO NOT change this.
+     */
     const geometry =
-        new THREE.CylinderGeometry(
-            0.018,
-            0.018,
-            length,
-            8,
-            1,
-            false
-        );
-
+        new THREE.BufferGeometry()
+            .setFromPoints([
+                start,
+                end
+            ]);
 
     const material =
-        new THREE.MeshBasicMaterial({
+        new THREE.LineBasicMaterial({
             color: 0x9bdcff,
             transparent: true,
-            opacity: 0.72,
+            opacity: 0.035,
             depthWrite: false
         });
 
-
     const line =
-        new THREE.Mesh(
+        new THREE.Line(
             geometry,
             material
         );
 
-
-    line.position.copy(
-        midpoint
-    );
-
-
-    line.quaternion.setFromUnitVectors(
-        new THREE.Vector3(0, 1, 0),
-        direction.normalize()
-    );
-
-
     scene.add(line);
+
+
+    /*
+     * =====================================================
+     * MOBILE TRIANGLE
+     * =====================================================
+     *
+     * Completely separate from the PC line.
+     */
+    let mobileLine = null;
+
+    const isTouchDevice =
+        window.matchMedia(
+            "(hover: none) and (pointer: coarse)"
+        ).matches;
+
+
+    if (isTouchDevice) {
+
+        const direction =
+            end.clone().sub(start);
+
+        const length =
+            direction.length();
+
+        const midpoint =
+            start.clone()
+                .add(end)
+                .multiplyScalar(0.5);
+
+
+        const mobileGeometry =
+            new THREE.CylinderGeometry(
+                0.004,
+                0.004,
+                length,
+                8,
+                1,
+                false
+            );
+
+
+        const mobileMaterial =
+            new THREE.MeshBasicMaterial({
+                color: 0x9bdcff,
+                transparent: true,
+                opacity: 0.65,
+                depthWrite: false,
+                depthTest: false
+            });
+
+
+        mobileLine =
+            new THREE.Mesh(
+                mobileGeometry,
+                mobileMaterial
+            );
+
+
+        mobileLine.position.copy(
+            midpoint
+        );
+
+
+        mobileLine.quaternion.setFromUnitVectors(
+            new THREE.Vector3(0, 1, 0),
+            direction.normalize()
+        );
+
+
+        scene.add(
+            mobileLine
+        );
+
+    }
 
 
     triangleLines.push({
 
         line: line,
+
+        mobileLine: mobileLine,
 
         start: start,
 
@@ -1807,11 +1864,13 @@ function hideMobileInfo() {
 
         distance: distance,
 
-        baseOpacity: 0.72,
+        baseOpacity: 0.035,
 
-        baseScale: 1,
+        mobileBaseOpacity: 0.65,
 
-        highlightedScale: 2.8
+        mobileBaseScale: 1,
+
+        mobileHighlightedScale: 3
 
     });
 
@@ -2359,19 +2418,44 @@ panoramaLoader.load(
     }
 
 
-    function resetLineHighlight() {
+    function resetLineHighlight(mobile = false) {
 
-        triangleLines.forEach(
-            data => {
+    triangleLines.forEach(
+        data => {
 
+            if (mobile) {
+
+                if (data.mobileLine) {
+
+                    data.mobileLine.material.opacity =
+                        data.mobileBaseOpacity;
+
+                    data.mobileLine.scale.set(
+                        data.mobileBaseScale,
+                        data.mobileBaseScale,
+                        data.mobileBaseScale
+                    );
+
+                }
+
+            }
+
+            else {
+
+                /*
+                 * PC behaviour.
+                 * Exactly the original line.
+                 */
                 data.line.material.opacity =
                     data.baseOpacity;
 
             }
-        );
 
-        activeLine = null;
-    }
+        }
+    );
+
+    activeLine = null;
+}
 
 
     function setPointer(
@@ -3038,18 +3122,20 @@ function handleTouchUp(
 
 
     if (
-        interaction.type ===
-        "none"
-    ) {
+    interaction.type ===
+    "none"
+) {
 
-        hideMobileInfo();
+    resetLineHighlight(true);
 
-        lastTapTime = 0;
+    hideMobileInfo();
 
-        lastTapKey = null;
+    lastTapTime = 0;
 
-        return;
-    }
+    lastTapKey = null;
+
+    return;
+}
 
 
     const key =
@@ -3060,13 +3146,16 @@ function handleTouchUp(
 
     const now =
         performance.now();
-
+  
+   if (interaction.type === "vertex") {
+    resetLineHighlight(true);
+   }
 
     const isDoubleTap =
         key === lastTapKey &&
         now - lastTapTime < 350;
 
-
+    
     if (isDoubleTap) {
 
         /*
@@ -3095,11 +3184,23 @@ function handleTouchUp(
     }
 
     if (interaction.type === "line") {
-    resetLineHighlight();
 
-    interaction.line.line.material.opacity = 0.35;
+    resetLineHighlight(true);
+
+    if (interaction.line.mobileLine) {
+
+        interaction.line.mobileLine.material.opacity = 1.0;
+
+        interaction.line.mobileLine.scale.set(
+            interaction.line.mobileHighlightedScale,
+            interaction.line.mobileHighlightedScale,
+            interaction.line.mobileHighlightedScale
+        );
+
+    }
+
     activeLine = interaction.line;
-   }
+}
     showTouchInformation(
         interaction
     );
@@ -3542,14 +3643,21 @@ planeMaterial.dispose();
 scene.remove(
     galacticPlaneGroup
 );
-            triangleLines.forEach(
-                data => {
+           triangleLines.forEach(
+    data => {
 
-                    data.line.geometry.dispose();
-                    data.line.material.dispose();
+        data.line.geometry.dispose();
+        data.line.material.dispose();
 
-                }
-            );
+        if (data.mobileLine) {
+
+            data.mobileLine.geometry.dispose();
+            data.mobileLine.material.dispose();
+
+        }
+
+    }
+);
 
             backgroundStars.forEach(
                 entry => {
