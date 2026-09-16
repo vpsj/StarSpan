@@ -1734,61 +1734,90 @@ function hideMobileInfo() {
     const triangleLines = [];
 
 
-    function createTriangleLine(
-        start,
-        end,
-        name1,
-        name2,
-        distance
-    ) {
+  function createTriangleLine(
+    start,
+    end,
+    name1,
+    name2,
+    distance
+) {
 
-        const geometry =
-            new THREE.BufferGeometry()
-                .setFromPoints([
-                    start,
-                    end
-                ]);
+    const direction =
+        end.clone().sub(start);
 
+    const length =
+        direction.length();
 
-        const material =
-            new THREE.LineBasicMaterial({
-                color: 0x8fc9e8,
-                transparent: true,
-                opacity: 0.035
-            });
+    const midpoint =
+        start.clone().add(end).multiplyScalar(0.5);
 
 
-        const line =
-            new THREE.Line(
-                geometry,
-                material
-            );
+    const geometry =
+        new THREE.CylinderGeometry(
+            0.018,
+            0.018,
+            length,
+            8,
+            1,
+            false
+        );
 
 
-        scene.add(line);
-
-
-        triangleLines.push({
-
-            line: line,
-
-            start: start,
-
-            end: end,
-
-            name1: name1,
-
-            name2: name2,
-
-            distance: distance,
-
-            baseOpacity: 0.035
-
+    const material =
+        new THREE.MeshBasicMaterial({
+            color: 0x9bdcff,
+            transparent: true,
+            opacity: 0.72,
+            depthWrite: false
         });
 
 
-        return line;
-    }
+    const line =
+        new THREE.Mesh(
+            geometry,
+            material
+        );
+
+
+    line.position.copy(
+        midpoint
+    );
+
+
+    line.quaternion.setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        direction.normalize()
+    );
+
+
+    scene.add(line);
+
+
+    triangleLines.push({
+
+        line: line,
+
+        start: start,
+
+        end: end,
+
+        name1: name1,
+
+        name2: name2,
+
+        distance: distance,
+
+        baseOpacity: 0.72,
+
+        baseScale: 1,
+
+        highlightedScale: 2.8
+
+    });
+
+
+    return line;
+}
 
 
    createTriangleLine(
@@ -1893,6 +1922,7 @@ function hideMobileInfo() {
                     transparent: true,
 
                     depthWrite: false,
+                    depthTest: false
 
                     opacity:
                         0.32 +
