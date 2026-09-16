@@ -1258,29 +1258,55 @@ scene.add(
  * DEFAULT FRONT VIEW
  * =====================================================
  *
- * Start on the side opposite the Galactic Centre,
- * looking directly toward it.
+ * Look directly along Galactic longitude l = 0°.
  *
- * This puts the queried local stars in the foreground
- * with the Galactic Centre / Milky Way behind them.
+ * galacticCenterDirection points FROM Sol toward
+ * the Galactic Centre.
+ *
+ * Therefore the camera is placed on the opposite
+ * side of Sol and looks toward Sol.
+ *
+ * Result:
+ *
+ *        CAMERA
+ *           ↓
+ *           ☉ Sol
+ *           ↓
+ *      Galactic Centre
+ *           ↓
+ *       Milky Way core
+ *
+ * The Galactic Centre is therefore directly behind
+ * Sol in the initial view.
  */
+const defaultViewDirection =
+    galacticCenterDirection
+        .clone()
+        .normalize();
+
 
 camera.position.copy(
     solPosition
         .clone()
         .sub(
-            galacticCenterDirection
-                .clone()
+            defaultViewDirection
                 .multiplyScalar(
                     cameraDistance
                 )
         )
 );
 
+
+/*
+ * Look directly at Sol.
+ *
+ * This is important. Looking at mapCenter would
+ * introduce an offset and the Galactic Centre would
+ * no longer be exactly behind Sol.
+ */
 camera.lookAt(
     solPosition
 );
-
 
     /* =====================================================
        CONTROLS
@@ -1297,9 +1323,9 @@ camera.lookAt(
     controls.enablePan = true;
     controls.enableZoom = true;
 
-    controls.target.copy(mapCenter);
+    controls.target.copy(solPosition);
     controls.update();
-
+ 
 
     /* =====================================================
        RENDERER
@@ -2138,39 +2164,62 @@ if (isTouchDevice) {
    ===================================================== */
 
 /*
- * Use the actual Milky Way panorama as a large sphere
- * surrounding the star system.
+ * The Milky Way is rendered on a very large sphere
+ * surrounding the local star system.
  *
- * Unlike scene.background, a sphere can be rotated.
- * This allows the panorama to use exactly the same
- * Galactic coordinate orientation as the Galactic Plane.
+ * IMPORTANT:
+ *
+ * The sphere's equator is aligned with the EXACT SAME
+ * Galactic Plane used by the coordinate grid.
+ *
+ * This means the Milky Way band and the coordinate
+ * plane occupy the same physical plane.
+ *
+ * The panorama is deliberately NOT made the scene
+ * background because scene.background cannot be given
+ * the required Galactic Plane orientation in the
+ * Three.js version used by StarSpan.
  */
 
 let panoramaTexture = null;
 let panoramaSphere = null;
 let mapActive = true;
 
+
 const panoramaLoader =
     new THREE.TextureLoader();
 
+
 panoramaLoader.load(
+
     "Milky%20way%20panaroma.jpg",
 
     function(texture) {
 
         /*
-         * Normal JPG colour handling.
+         * The JPG is a normal colour texture.
          */
         texture.encoding =
             THREE.sRGBEncoding;
 
+
         /*
-         * Equirectangular 360° panorama.
+         * DO NOT use:
+         *
+         * THREE.EquirectangularReflectionMapping
+         *
+         * here.
+         *
+         * We are putting the image directly onto a
+         * SphereGeometry, so normal UV mapping is
+         * exactly what we need.
          */
-        texture.mapping =
-            THREE.EquirectangularReflectionMapping;
 
 
+        /*
+         * The map may have been replaced before the
+         * asynchronous image load completed.
+         */
         if (!mapActive) {
 
             texture.dispose();
@@ -2184,14 +2233,26 @@ panoramaLoader.load(
 
 
         /*
-         * Very large sphere surrounding the entire
-         * local star system.
+         * -------------------------------------------------
+         * PANORAMA SIZE
+         * -------------------------------------------------
          *
-         * The camera remains inside this sphere.
+         * Make the sphere enormously larger than the
+         * local star system and normal camera movement.
+         *
+         * This replaces the nonexistent `backdropRadius`
+         * from the previous version.
          */
+        const panoramaRadius =
+            Math.max(
+                1000,
+                cameraDistance * 25
+            );
+
+
         const panoramaGeometry =
             new THREE.SphereGeometry(
-                backdropRadius * 1.05,
+                panoramaRadius,
                 96,
                 64
             );
@@ -2204,7 +2265,13 @@ panoramaLoader.load(
                     panoramaTexture,
 
                 side:
-                    THREE.BackSide
+                    THREE.BackSide,
+
+                depthWrite:
+                    false,
+
+                depthTest:
+                    false
 
             });
 
@@ -2217,12 +2284,18 @@ panoramaLoader.load(
 
 
         /*
-         * Orient the panorama using the EXACT SAME
-         * Galactic coordinate basis as the Galactic Plane.
+         * -------------------------------------------------
+         * GALACTIC PLANE ORIENTATION
+         * -------------------------------------------------
          *
-         * Local X  = Galactic Centre
-         * Local Y  = Galactic North
-         * Local Z  = Galactic-plane perpendicular
+         * Sphere local X/Z plane = panorama's equator.
+         *
+         * galacticPlaneGroup's local X/Z plane =
+         * the actual Galactic Plane.
+         *
+         * Therefore copying this quaternion makes the
+         * Milky Way band occupy exactly the same plane
+         * as the coordinate grid.
          */
         panoramaSphere.quaternion.copy(
             galacticPlaneGroup.quaternion
@@ -2230,10 +2303,37 @@ panoramaLoader.load(
 
 
         /*
-         * Keep the panorama centred on Sol.
+         * The panorama surrounds Sol.
          */
         panoramaSphere.position.copy(
             solPosition
+        );
+
+
+        /*
+         * -------------------------------------------------
+         * DEFAULT VIEW ALIGNMENT
+         * -------------------------------------------------
+         *
+         * The panorama is a 360° image. Its horizontal
+         * longitude can be rotated around Galactic North
+         * without changing the Galactic Plane itself.
+         *
+         * We therefore rotate the panorama around its
+         * LOCAL Y axis so that the bright Galactic Centre
+         * in the photograph appears behind the initial
+         * star-system view.
+         *
+         * This changes only the panorama's longitude
+         * alignment. Its Galactic-plane tilt remains
+         * exactly the same as the coordinate grid.
+         */
+        const panoramaLongitudeOffset =
+            Math.PI;
+
+
+        panoramaSphere.rotateY(
+            panoramaLongitudeOffset
         );
 
 
@@ -2253,6 +2353,7 @@ panoramaLoader.load(
         );
 
     }
+
 );
 
     /* =====================================================
