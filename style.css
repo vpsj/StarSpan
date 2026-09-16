@@ -6,9 +6,9 @@
 }
 
 
-/* =========================
+/* =========================================================
    GENERAL
-   ========================= */
+   ========================================================= */
 
 * {
     box-sizing: border-box;
@@ -29,46 +29,79 @@ body {
 }
 
 
-/* =========================
+/* =========================================================
    BACKGROUND
-   ========================= */
+   ========================================================= */
 
 #booking {
     position: relative;
     min-height: 100vh;
 
-    background-image: url('first_milky_way.jpg');
-    background-size: cover;
-    background-position: center center;
-    background-repeat: no-repeat;
+    background: #05070b;
 
     overflow: hidden;
 }
 
 
-/* Dark overlay over the photograph */
-
+/*
+ * Actual photograph.
+ *
+ * Slight blur keeps the background atmospheric without
+ * competing with the calculator.
+ */
 #booking::before {
     content: '';
+
+    position: absolute;
+    inset: -10px;
+
+    background-image: url('wallpaper3.jpg');
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+
+    filter: blur(2px);
+
+    transform: scale(1.015);
+
+    z-index: 0;
+}
+
+
+/*
+ * Much lighter overlay than before.
+ *
+ * The old overlay was making the photograph unnecessarily
+ * dark. This keeps text readable while allowing the
+ * Milky Way and stars to actually pop.
+ */
+#booking::after {
+    content: '';
+
     position: absolute;
     inset: 0;
 
     background:
         linear-gradient(
-            rgba(3, 6, 12, 0.48),
-            rgba(3, 6, 12, 0.62)
+            180deg,
+            rgba(3, 8, 18, 0.16) 0%,
+            rgba(3, 8, 18, 0.22) 45%,
+            rgba(3, 8, 18, 0.34) 100%
         );
 
     pointer-events: none;
+
+    z-index: 0;
 }
 
 
-/* =========================
+/* =========================================================
    CENTERING
-   ========================= */
+   ========================================================= */
 
 .section-center {
     position: relative;
+    z-index: 1;
 
     min-height: 100vh;
 
@@ -76,43 +109,76 @@ body {
     align-items: center;
     justify-content: center;
 
-    padding: 40px 20px;
+    padding: 42px 20px;
 }
 
 
-/* =========================
+/* =========================================================
    CONTAINER
-   ========================= */
+   ========================================================= */
 
 .container {
     width: 100%;
-    max-width: 720px;
+    max-width: 920px;
     margin: 0 auto;
 }
 
 
-/* =========================
-   CALCULATOR
-   ========================= */
+/* =========================================================
+   ACTIVE PAGE AREA
+   ========================================================= */
 
+/*
+ * This is the main glass shell surrounding the active
+ * StarSpan interface.
+ *
+ * Because the star map is inside .booking-form, it will
+ * automatically sit inside this same border when displayed.
+ */
 .booking-form {
     width: 100%;
+
+    padding: 34px;
+
+    border-radius: 24px;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(10, 20, 34, 0.56),
+            rgba(5, 12, 23, 0.38)
+        );
+
+    border: 1px solid rgba(145, 210, 255, 0.30);
+
+    box-shadow:
+        0 25px 80px rgba(0, 0, 0, 0.42),
+        0 0 45px rgba(65, 155, 220, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
 }
 
 
-/* =========================
+/* =========================================================
    HEADER
-   ========================= */
+   ========================================================= */
 
 .form-header {
     text-align: center;
-    margin-bottom: 28px;
+
+    margin-bottom: 30px;
 }
 
 .form-header h1 {
     margin: 0;
 
+    /*
+     * KEEP THE EXISTING STAR FONT.
+     */
     font-family: 'starry', Arial, sans-serif;
+
     font-size: clamp(32px, 5vw, 52px);
     line-height: 1.1;
 
@@ -124,93 +190,110 @@ body {
 
     text-shadow:
         0 0 10px rgba(72, 136, 200, 0.45),
-        0 0 25px rgba(72, 136, 200, 0.2);
+        0 0 25px rgba(72, 136, 200, 0.20);
 }
 
 .form-header p {
     margin: 12px 0 0;
 
-    color: rgba(220, 235, 250, 0.82);
+    color: rgba(235, 245, 255, 0.88);
+
     font-size: 15px;
     letter-spacing: 0.5px;
+
+    text-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.55);
 }
 
 
-/* =========================
-   FORM PANEL
-   ========================= */
+/* =========================================================
+   CALCULATOR PANEL
+   ========================================================= */
 
 #star-form {
-    background: rgba(13, 17, 25, 0.92);
+    background:
+        rgba(5, 13, 25, 0.48);
 
-    padding: 30px;
+    padding: 28px;
 
-    border: 1px solid rgba(130, 180, 225, 0.15);
-    border-radius: 8px;
+    border:
+        1px solid
+        rgba(145, 210, 255, 0.20);
+
+    border-radius: 18px;
 
     box-shadow:
-        0 20px 60px rgba(0, 0, 0, 0.55),
-        0 0 35px rgba(30, 100, 170, 0.08);
+        inset 0 1px 0 rgba(255, 255, 255, 0.055),
+        0 12px 35px rgba(0, 0, 0, 0.18);
 
-    backdrop-filter: blur(5px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 
-/* =========================
+/* =========================================================
    INPUT ROW
-   ========================= */
+   ========================================================= */
 
 .row {
     display: grid;
+
     grid-template-columns: 1fr 1fr;
-    gap: 20px;
+
+    gap: 22px;
 }
 
 
-/* =========================
+/* =========================================================
    FORM GROUP
-   ========================= */
+   ========================================================= */
 
 .form-group {
     margin-bottom: 20px;
 }
 
 
-/* =========================
+/* =========================================================
    LABELS
-   ========================= */
+   ========================================================= */
 
 .form-label {
     display: block;
 
-    margin-bottom: 8px;
+    margin-bottom: 9px;
 
-    color: #ffffff;
+    color: rgba(255, 255, 255, 0.96);
 
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 700;
     font-style: italic;
 
-    text-align: center;
+    text-align: left;
+
+    letter-spacing: 0.2px;
 }
 
 
-/* =========================
-   INPUTS
-   ========================= */
+/* =========================================================
+   MODERN INPUTS
+   ========================================================= */
 
 .form-control {
     display: block;
 
     width: 100%;
-    height: 50px;
+    height: 54px;
 
-    padding: 0 15px;
+    padding: 0 44px 0 17px;
 
-    background: rgba(88, 91, 96, 0.9);
+    background:
+        rgba(7, 16, 29, 0.72);
 
-    border: 1px solid transparent;
-    border-radius: 5px;
+    border:
+        1px solid
+        rgba(145, 210, 255, 0.32);
+
+    border-radius: 12px;
 
     outline: none;
 
@@ -219,73 +302,103 @@ body {
     font-family: inherit;
     font-size: 15px;
 
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.045),
+        0 4px 15px rgba(0, 0, 0, 0.12);
+
     transition:
         border-color 0.2s ease,
         box-shadow 0.2s ease,
-        background 0.2s ease;
+        background 0.2s ease,
+        transform 0.2s ease;
 }
 
 .form-control::placeholder {
-    color: rgba(225, 230, 235, 0.72);
+    color: rgba(220, 232, 245, 0.62);
+}
+
+.form-control:hover {
+    border-color:
+        rgba(145, 210, 255, 0.48);
+
+    background:
+        rgba(8, 19, 34, 0.78);
 }
 
 .form-control:focus {
-    background: rgba(100, 104, 110, 0.95);
+    background:
+        rgba(8, 20, 36, 0.88);
 
-    border-color: rgba(123, 220, 241, 0.65);
+    border-color:
+        rgba(123, 220, 241, 0.85);
 
     box-shadow:
-        0 0 0 3px rgba(123, 220, 241, 0.10),
-        0 0 15px rgba(123, 220, 241, 0.12);
+        0 0 0 3px rgba(123, 220, 241, 0.09),
+        0 0 22px rgba(80, 190, 245, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
 
-/* =========================
+/* =========================================================
    BUTTON
-   ========================= */
+   ========================================================= */
 
 .form-btn {
-    margin-top: 5px;
+    margin-top: 8px;
 }
 
 .submit-btn {
     width: 100%;
-    height: 52px;
+    height: 54px;
 
     border: none;
-    border-radius: 5px;
 
-    background: #7bdcf1;
-    color: #101113;
+    border-radius: 14px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #73d9f3 0%,
+            #63c5ed 100%
+        );
+
+    color: #07131d;
 
     font-family: inherit;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 800;
 
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
 
     cursor: pointer;
 
+    box-shadow:
+        0 8px 25px rgba(74, 190, 235, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.45);
+
     transition:
         transform 0.15s ease,
-        background 0.15s ease,
+        filter 0.15s ease,
         box-shadow 0.15s ease;
 }
 
 .submit-btn:hover {
-    background: #91e5f6;
+    filter: brightness(1.08);
 
     box-shadow:
-        0 0 20px rgba(123, 220, 241, 0.25);
+        0 10px 30px rgba(74, 190, 235, 0.28),
+        0 0 22px rgba(74, 190, 235, 0.12);
 
     transform: translateY(-1px);
 }
 
 .submit-btn:active {
     transform: translateY(1px);
-}
 
+    box-shadow:
+        0 5px 15px rgba(74, 190, 235, 0.16);
+}
 
 /* =========================
    RESULT
@@ -308,14 +421,40 @@ body {
 }
 
 
-/* =========================
+/* =========================================================
    MOBILE
-   ========================= */
+   ========================================================= */
 
 @media (max-width: 600px) {
 
     .section-center {
-        padding: 30px 15px;
+        align-items: flex-start;
+
+        padding:
+            28px 10px 35px;
+    }
+
+    .container {
+        width: 100%;
+    }
+
+    .booking-form {
+        padding: 24px 14px 18px;
+
+        border-radius: 20px;
+
+        background:
+            linear-gradient(
+                145deg,
+                rgba(7, 17, 30, 0.58),
+                rgba(4, 11, 21, 0.44)
+            );
+
+        border-color:
+            rgba(145, 210, 255, 0.27);
+
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
     }
 
     .form-header {
@@ -327,28 +466,55 @@ body {
     }
 
     .form-header p {
+        margin-top: 10px;
+
         font-size: 14px;
     }
 
     #star-form {
-        padding: 22px 18px;
+        padding: 20px 14px;
+
+        border-radius: 16px;
     }
 
     .row {
         grid-template-columns: 1fr;
+
         gap: 0;
     }
 
+    .form-group {
+        margin-bottom: 18px;
+    }
+
     .form-label {
-        text-align: left;
+        margin-bottom: 8px;
+
+        font-size: 16px;
     }
 
     .form-control {
-        height: 48px;
+        height: 56px;
+
+        padding:
+            0 43px 0 16px;
+
+        border-radius: 13px;
+
+        font-size: 16px;
+
+        /*
+         * 16px prevents mobile browsers from zooming the
+         * page when the input receives focus.
+         */
     }
 
     .submit-btn {
-        height: 50px;
+        height: 54px;
+
+        border-radius: 14px;
+
+        font-size: 14px;
     }
 }
 /* =========================
@@ -514,7 +680,8 @@ body {
     width: 100%;
     height: 600px;
     margin-top: 30px;
-    border-radius: 8px;
+    border-radius: 16px;
+    border: 1px solid rgba(145, 210, 255, 0.22);
     overflow: hidden;
     background: #05070b;
     
@@ -620,7 +787,7 @@ body {
 
     right: 15px;
 
-    top: 54px;
+    top: 55px;
 
     transform:
         translateY(-50%);
