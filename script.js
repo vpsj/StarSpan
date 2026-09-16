@@ -1279,9 +1279,22 @@ scene.add(
  * The Galactic Centre is therefore directly behind
  * Sol in the initial view.
  */
+const planeViewAngle =
+    30 * Math.PI / 180;
+
 const defaultViewDirection =
     galacticCenterDirection
         .clone()
+        .multiplyScalar(
+            Math.cos(planeViewAngle)
+        )
+        .add(
+            galacticNorth
+                .clone()
+                .multiplyScalar(
+                    Math.sin(planeViewAngle)
+                )
+        )
         .normalize();
 
 
@@ -1296,18 +1309,9 @@ camera.position.copy(
         )
 );
 
-
-/*
- * Look directly at Sol.
- *
- * This is important. Looking at mapCenter would
- * introduce an offset and the Galactic Centre would
- * no longer be exactly behind Sol.
- */
 camera.lookAt(
     solPosition
 );
-
     /* =====================================================
        CONTROLS
        ===================================================== */
