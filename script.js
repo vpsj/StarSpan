@@ -1258,30 +1258,34 @@ scene.add(
  * DEFAULT FRONT VIEW
  * =====================================================
  *
- * Look directly along Galactic longitude l = 0°.
+ * Look toward the Galactic Centre while viewing the
+ * Galactic Plane from 30° toward Galactic North.
  *
- * galacticCenterDirection points FROM Sol toward
- * the Galactic Centre.
+ * The viewing direction is therefore:
  *
- * Therefore the camera is placed on the opposite
- * side of Sol and looks toward Sol.
+ *     30° toward Galactic North
+ *     from the Sol → Galactic Centre direction.
  *
- * Result:
+ * The camera's UP vector is then calculated so that
+ * the Galactic Plane remains horizontal on screen.
  *
- *        CAMERA
- *           ↓
- *           ☉ Sol
- *           ↓
- *      Galactic Centre
- *           ↓
- *       Milky Way core
- *
- * The Galactic Centre is therefore directly behind
- * Sol in the initial view.
+ * This changes only the camera orientation.
+ * The actual Galactic Plane and star coordinates
+ * remain physically unchanged.
  */
+
 const planeViewAngle =
     30 * Math.PI / 180;
 
+
+/*
+ * -----------------------------------------------------
+ * VIEWING DIRECTION
+ * -----------------------------------------------------
+ *
+ * Start with the direction from Sol toward the
+ * Galactic Centre, then tilt 30° toward Galactic North.
+ */
 const defaultViewDirection =
     galacticCenterDirection
         .clone()
@@ -1298,6 +1302,9 @@ const defaultViewDirection =
         .normalize();
 
 
+/*
+ * Camera sits opposite the viewing direction.
+ */
 camera.position.copy(
     solPosition
         .clone()
@@ -1309,9 +1316,64 @@ camera.position.copy(
         )
 );
 
+
+
+/*
+ * -----------------------------------------------------
+ * CAMERA ROLL
+ * -----------------------------------------------------
+ *
+ * The horizontal direction on screen must lie in the
+ * Galactic Plane.
+ *
+ * This is the intersection of:
+ *
+ *     Galactic Plane
+ *     Camera viewing plane
+ *
+ * Therefore it is perpendicular to both the viewing
+ * direction and Galactic North.
+ */
+const screenRight =
+    galacticNorth
+        .clone()
+        .cross(
+            defaultViewDirection
+        )
+        .normalize();
+
+
+/*
+ * Construct the screen-up direction from the camera
+ * viewing direction and the Galactic-plane horizontal.
+ *
+ * The negative sign is intentional:
+ * it puts the Galactic Centre slightly ABOVE Sol
+ * in the initial view, matching the orientation you
+ * showed in the reference image.
+ */
+const screenUp =
+    screenRight
+        .clone()
+        .cross(
+            defaultViewDirection
+        )
+        .normalize()
+        .negate();
+
+
+camera.up.copy(
+    screenUp
+);
+
+
+/*
+ * Look directly at Sol.
+ */
 camera.lookAt(
     solPosition
 );
+   
     /* =====================================================
        CONTROLS
        ===================================================== */
@@ -3849,13 +3911,63 @@ if (
 
             scene.background = null;
 
-            if (panoramaTexture) {
+            /*
+ * ---------------------------------------------------------
+ * PANORAMA CLEANUP
+ * ---------------------------------------------------------
+ *
+ * The panorama consists of three separate WebGL resources:
+ *
+ *     1. Mesh
+ *     2. Geometry
+ *     3. Material
+ *
+ * The texture is also disposed separately.
+ *
+ * This is important because a new panorama is created
+ * every time the map is initialized.
+ */
+if (panoramaSphere) {
 
-                panoramaTexture.dispose();
+    scene.remove(
+        panoramaSphere
+    );
 
-                panoramaTexture = null;
-            }
-            galacticPlaneObjects.forEach(
+
+    if (panoramaSphere.geometry) {
+
+        panoramaSphere.geometry.dispose();
+
+    }
+
+
+    if (panoramaSphere.material) {
+
+        panoramaSphere.material.dispose();
+
+    }
+
+
+    panoramaSphere = null;
+}
+
+
+if (panoramaTexture) {
+
+    panoramaTexture.dispose();
+
+    panoramaTexture = null;
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * GALACTIC PLANE CLEANUP
+ * ---------------------------------------------------------
+ */
+
+galacticPlaneObjects.forEach(
     object => {
 
         object.geometry.dispose();
@@ -3874,7 +3986,6 @@ if (
 
 
 planeMaterial.dispose();
-
 
 scene.remove(
     galacticPlaneGroup
@@ -3902,29 +4013,84 @@ if (data.mobileHighlightLine) {
     }
 );
 
-            backgroundStars.forEach(
-                entry => {
+            /*
+ * ---------------------------------------------------------
+ * BACKGROUND STAR CLEANUP
+ * ---------------------------------------------------------
+ */
 
-                    entry.sprite.material.dispose();
+backgroundStars.forEach(
+    entry => {
 
-                }
-            );
+        scene.remove(
+            entry.sprite
+        );
 
-            importantLabels.forEach(
-                data =>
-                    data.label.remove()
-            );
+        entry.sprite.material.dispose();
 
-            backgroundLabels.forEach(
-                data =>
-                    data.label.remove()
-            );
+    }
+);
 
-            tooltip.remove();
-            mobileInfo.remove();
-            starTexture.dispose();
 
-            renderer.dispose();
+/*
+ * ---------------------------------------------------------
+ * QUERIED STAR CLEANUP
+ * ---------------------------------------------------------
+ *
+ * Each queried star has its own SpriteMaterial.
+ * The texture itself is shared between all stars.
+ */
+animatedStars.forEach(
+    data => {
+
+        scene.remove(
+            data.sprite
+        );
+
+        data.sprite.material.dispose();
+
+    }
+);
+
+
+/*
+ * ---------------------------------------------------------
+ * HTML CLEANUP
+ * ---------------------------------------------------------
+ */
+
+importantLabels.forEach(
+    data =>
+        data.label.remove()
+);
+
+
+backgroundLabels.forEach(
+    data =>
+        data.label.remove()
+);
+
+
+tooltip.remove();
+mobileInfo.remove();
+
+
+/*
+ * ---------------------------------------------------------
+ * SHARED STAR TEXTURE
+ * ---------------------------------------------------------
+ */
+
+starTexture.dispose();
+
+
+/*
+ * ---------------------------------------------------------
+ * RENDERER
+ * ---------------------------------------------------------
+ */
+
+renderer.dispose();
 
         };
 
