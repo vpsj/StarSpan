@@ -2087,66 +2087,164 @@ if (isTouchDevice) {
         )
     );
 
-      /* =====================================================
-       BACKGROUND REAL STARS
-       ===================================================== */
+ /* =====================================================
+   BACKGROUND REAL STARS
+   ===================================================== */
 
-    const backgroundStars = [];
-
-
-    const queriedStars =
-        new Set([
-            star1,
-            star2
-        ]);
+const backgroundStars = [];
 
 
-    /*
-     * Find real catalogue stars close to Sol.
-     *
-     * We deliberately keep this small:
-     * maximum 8 stars, within 20 light-years.
-     *
-     * The queried stars themselves are excluded.
-     */
-    const nearbyStars =
-        stars
-            .filter(star =>
-                !queriedStars.has(star)
+const queriedStars =
+    new Set([
+        star1,
+        star2
+    ]);
+
+
+/*
+ * Find named catalogue stars close to one of the
+ * two queried stars.
+ *
+ * IMPORTANT:
+ *
+ * We ONLY accept stars with a genuine value in the
+ * "proper" field.
+ *
+ * This deliberately excludes stars that only have
+ * HIP / HD / HR / Gl / Bayer / Flamsteed designations.
+ */
+function findNearbyNamedStars(
+    referencePosition,
+    maximumStars
+) {
+
+    return stars
+
+        .filter(star =>
+            !queriedStars.has(star) &&
+            cleanDisplay(star.proper)
+        )
+
+        .map(star => {
+
+            const position =
+                starToPosition(star);
+
+
+            return {
+
+                star: star,
+
+                position: position,
+
+                distance:
+                    position.distanceTo(
+                        referencePosition
+                    )
+
+            };
+
+        })
+
+        .filter(entry =>
+            Number.isFinite(
+                entry.distance
             )
-            .map(star => {
+        )
 
-                const position =
-                    starToPosition(star);
+        .sort((a, b) =>
+            a.distance -
+            b.distance
+        )
 
-                return {
+        .slice(
+            0,
+            maximumStars
+        );
 
-                    star: star,
+}
 
-                    position: position,
 
-                    distance:
-                        position.length()
+/*
+ * Get the five nearest properly named stars
+ * around each important reference point:
+ *
+ *     Sol
+ *     Star 1
+ *     Star 2
+ *
+ * Maximum = 15 background stars.
+ */
+const star1Neighbours =
+    findNearbyNamedStars(
+        star1Position,
+        5
+    );
 
-                };
 
-            })
-            .filter(entry =>
-                Number.isFinite(entry.distance) &&
-                entry.distance <= 20
+const star2Neighbours =
+    findNearbyNamedStars(
+        star2Position,
+        5
+    );
+
+
+const solNeighbours =
+    findNearbyNamedStars(
+        solPosition,
+        5
+    );
+
+
+/*
+ * Combine the three lists and remove duplicates.
+ *
+ * A star that is near more than one reference
+ * point is shown only once.
+ */
+const namedBackgroundStars = [];
+
+
+const alreadyAdded =
+    new Set();
+
+
+[
+    ...star1Neighbours,
+    ...star2Neighbours,
+    ...solNeighbours
+]
+    .forEach(entry => {
+
+        if (
+            alreadyAdded.has(
+                entry.star
             )
-            .sort((a, b) =>
-                a.distance -
-                b.distance
-            )
-            .slice(0, 8);
+        ) {
+
+            return;
+
+        }
+
+
+        alreadyAdded.add(
+            entry.star
+        );
+
+
+    namedBackgroundStars.push({
+    star: entry.star,
+    position: entry.position,
+    distance: entry.distance,
+    solDistance: entry.position.length()
+});
 
 
     /*
      * Create the small number of real nearby stars.
      */
-    nearbyStars.forEach(
-        entry => {
+       namedBackgroundStars.forEach(
+       entry => {
 
             const material =
                 new THREE.SpriteMaterial({
@@ -2493,7 +2591,6 @@ panoramaLoader.load(
 
 
    backgroundStars
-    .slice(0, 12)
     .forEach(entry => {
 
         backgroundLabels.push(
@@ -3138,7 +3235,7 @@ function handlePointer(
         showTooltip(
             interaction.background.name,
 
-            `${interaction.background.distance.toFixed(2)} light-years from Sol`
+            `${interaction.background.solDistance.toFixed(2)} light-years from Sol`
         );
 
 
