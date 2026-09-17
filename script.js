@@ -2232,99 +2232,111 @@ const alreadyAdded =
         );
 
 
-    namedBackgroundStars.push({
-    star: entry.star,
-    position: entry.position,
-    distance: entry.distance,
-    solDistance: entry.position.length()
-});
+        namedBackgroundStars.push({
+            star:
+                entry.star,
+
+            position:
+                entry.position,
+
+            distance:
+                entry.distance,
+
+            solDistance:
+                entry.position.length()
+        });
+
+    });
 
 
-    /*
-     * Create the small number of real nearby stars.
-     */
-       namedBackgroundStars.forEach(
-       entry => {
+/*
+ * Create the small number of real nearby stars.
+ */
+namedBackgroundStars.forEach(
+    entry => {
 
-            const material =
-                new THREE.SpriteMaterial({
+        const material =
+            new THREE.SpriteMaterial({
 
-                    map: starTexture,
+                map: starTexture,
 
-                    transparent: true,
+                transparent: true,
 
-                    depthWrite: false,
-                    depthTest: false,
+                depthWrite: false,
 
-                    opacity:
-                        0.32 +
-                        Math.random() * 0.20,
+                depthTest: false,
 
-                    blending:
-                        THREE.AdditiveBlending,
+                opacity:
+                    0.32 +
+                    Math.random() * 0.20,
 
-                    color:
-                        randomStarColour()
+                blending:
+                    THREE.AdditiveBlending,
 
-                });
-
-
-            const sprite =
-                new THREE.Sprite(
-                    material
-                );
-
-
-            /*
-             * Real background stars are deliberately
-             * much smaller than the three important stars.
-             */
-            const size =
-                0.24 +
-                Math.random() * 0.12;
-
-
-            sprite.scale.set(
-                size,
-                size,
-                1
-            );
-
-
-            sprite.position.copy(
-                entry.position
-            );
-
-
-            scene.add(
-                sprite
-            );
-
-
-            backgroundStars.push({
-
-                star:
-                    entry.star,
-
-                sprite:
-                    sprite,
-
-                position:
-                    entry.position,
-
-                distance:
-                    entry.distance,
-
-                name:
-                    getStarName(
-                        entry.star
-                    )
+                color:
+                    randomStarColour()
 
             });
 
-        }
-    );
 
+        const sprite =
+            new THREE.Sprite(
+                material
+            );
+
+
+        /*
+         * Real background stars are deliberately
+         * much smaller than the three important stars.
+         */
+        const size =
+            0.24 +
+            Math.random() * 0.12;
+
+
+        sprite.scale.set(
+            size,
+            size,
+            1
+        );
+
+
+        sprite.position.copy(
+            entry.position
+        );
+
+
+        scene.add(
+            sprite
+        );
+
+
+        backgroundStars.push({
+
+            star:
+                entry.star,
+
+            sprite:
+                sprite,
+
+            position:
+                entry.position,
+
+            distance:
+                entry.distance,
+
+            solDistance:
+                entry.solDistance,
+
+            name:
+                getStarName(
+                    entry.star
+                )
+
+        });
+
+    }
+);
 /* =====================================================
    360° MILKY WAY PANORAMA
    ===================================================== */
