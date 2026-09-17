@@ -3151,47 +3151,35 @@ function handlePointer(
 
 
     if (
-        interaction.type ===
-        "vertex"
-    ) {
+    interaction.type ===
+    "background"
+) {
 
-        resetLineHighlight();
-
-        setHoveredImportantStar(
-            interaction.vertex
-        );
+    resetLineHighlight();
 
 
-        showTooltip(
-            interaction.vertex.name,
+    showTooltip(
+        interaction.background.name,
 
-            `Angle: ${
-                calculateVertexAngle(
-                    interaction.vertex
-                ).toFixed(3)
-            }°`
-        );
+        `${interaction.background.solDistance.toFixed(2)} light-years from Sol`
+    );
 
 
-        moveTooltip(
-            interaction.position.x,
-            interaction.position.y
-        );
+    moveTooltip(
+        interaction.position.x,
+        interaction.position.y
+    );
 
 
-        if (isClick) {
+    /*
+     * Clicking a background star must NOT change
+     * the current camera focus.
+     *
+     * Background stars are informational only.
+     */
 
-            controls.target.copy(
-                interaction.vertex.position
-            );
-
-            controls.update();
-
-        }
-
-
-        return true;
-    }
+    return true;
+}
 
 
     setHoveredImportantStar(
@@ -3274,21 +3262,18 @@ function handlePointer(
 
     resetLineHighlight();
 
-    hideTooltip();
+hideTooltip();
 
 
-    if (isClick) {
+/*
+ * Clicking empty space must NOT change
+ * the current camera focus.
+ *
+ * OrbitControls will continue rotating around
+ * whatever target is currently active.
+ */
 
-        controls.target.copy(
-            mapCenter
-        );
-
-        controls.update();
-
-    }
-
-
-    return false;
+return false;
 }
 
 
@@ -3571,18 +3556,15 @@ function handleTouchUp(
          * Only stars have useful camera targets.
          */
         if (
-            interaction.type ===
-                "vertex" ||
+    interaction.type ===
+    "vertex"
+) {
 
-            interaction.type ===
-                "background"
-        ) {
+    centerOnInteraction(
+        interaction
+    );
 
-            centerOnInteraction(
-                interaction
-            );
-
-        }
+}
 
 
         lastTapTime = 0;
