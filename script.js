@@ -1343,27 +1343,29 @@ const screenRight =
         .normalize();
 
 
-/*
- * Construct the screen-up direction from the camera
- * viewing direction and the Galactic-plane horizontal.
- *
- * The negative sign is intentional:
- * it puts the Galactic Centre slightly ABOVE Sol
- * in the initial view, matching the orientation you
- * showed in the reference image.
- */
 const screenUp =
     screenRight
         .clone()
         .cross(
             defaultViewDirection
         )
-        .normalize()
-       
+        .normalize();
 
 
+/*
+ * Rotate the camera view by 180° around its
+ * viewing axis.
+ *
+ * This keeps the Galactic Plane horizontal and
+ * keeps the camera 30° above the plane looking down,
+ * but flips the north/south presentation on screen.
+ *
+ * Polaris therefore moves from the south-west side
+ * to the north-east side.
+ */
 camera.up.copy(
     screenUp
+        .multiplyScalar(-1)
 );
 
 
