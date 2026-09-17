@@ -947,7 +947,7 @@ function initializeStarMap(star1, star2) {
         starToPosition(star1);
 
     const star2Position =
-        starToPosition(star2);
+         starToPosition(star2);
 
 
     /* =====================================================
@@ -4499,16 +4499,334 @@ function renumberHopperFields() {
                 );
 
 
+            field.dataset.starNumber =
+                starNumber;
+
             if (label) {
 
-                label.textContent =
-                    `Star ${starNumber}`;
+               label.textContent =
+                `Star ${starNumber}`;
 
             }
 
         }
     );
 
+
+}
+
+/* =========================================================
+   STAR HOPPER - BUILD ROUTE
+   ========================================================= */
+
+function getHopperRoute() {
+
+    const fields =
+        hopperFields.querySelectorAll(
+            ".hopper-field"
+        );
+
+    const route = [];
+
+    /*
+     * Sol is always the default starting point.
+     */
+    const sol =
+        findStar("Sol");
+
+    if (!sol) {
+        return {
+            error: "Sol could not be found in the star catalogue."
+        };
+    }
+
+    route.push(sol);
+
+
+    /*
+     * Read the Hopper fields in their visible order.
+     */
+    for (const field of fields) {
+
+        const input =
+            field.querySelector("input");
+
+        const name =
+            input.value.trim();
+
+
+        if (!name) {
+
+            return {
+                error:
+                    "Please enter a star for every Hopper field."
+            };
+
+        }
+
+
+        const star =
+            findStar(name);
+
+
+        if (!star) {
+
+            return {
+                error:
+                    `Sorry. Star <span class="star-name">${escapeHTML(name)}</span> ` +
+                    `was not found in our database.`
+            };
+
+        }
+
+
+        /*
+         * If the user explicitly entered Sol as Star 1,
+         * don't create Sol → Sol.
+         *
+         * This ONLY removes an immediately repeated star.
+         */
+        if (
+            route.length > 0 &&
+            route[route.length - 1] === star
+        ) {
+
+            continue;
+
+        }
+
+
+        /*
+         * IMPORTANT:
+         *
+         * Do NOT use Set here.
+         *
+         * A star is allowed to appear multiple times
+         * in the route as long as the appearances are
+         * not consecutive.
+         *
+         * Example:
+         *
+         * Sol → Sirius → Betelgeuse → Sol → Procyon
+         *
+         * is completely valid.
+         */
+        route.push(star);
+
+    }
+
+
+    return {
+        route: route
+    };
+
+}
+
+/* =========================================================
+   STAR HOPPER - CALCULATE ROUTE
+   ========================================================= */
+
+function calculateHopperRoute() {
+
+    const hopperResult =
+        getHopperRoute();
+
+
+    if (hopperResult.error) {
+
+    const hopperResultElement =
+        document.getElementById("hopper-result");
+
+    hopperResultElement.innerHTML =
+        `<span class="error">${hopperResult.error}</span>`;
+
+    return null;
+
+     }
+
+
+    const route =
+        hopperResult.route;
+
+
+    /*
+     * A valid route needs at least one actual
+     * Hopper destination in addition to Sol.
+     */
+    if (route.length < 2) {
+
+    const hopperResultElement =
+        document.getElementById("hopper-result");
+
+    hopperResultElement.innerHTML =
+        '<span class="error">' +
+        'Please enter at least one destination star.' +
+        '</span>';
+
+    return null;
+
+     }
+
+
+    const hops = [];
+
+    let totalDistance = 0;
+
+
+    for (
+        let i = 0;
+        i < route.length - 1;
+        i++
+    ) {
+
+        const from =
+            route[i];
+
+        const to =
+            route[i + 1];
+
+
+        const distance =
+            calculateDistance(
+                from,
+                to
+            );
+
+
+        totalDistance += distance;
+
+
+        hops.push({
+
+            from: from,
+
+            to: to,
+
+            distance: distance
+
+        });
+
+    }
+
+
+    return {
+
+        route: route,
+
+        hops: hops,
+
+        totalDistance:
+            Math.round(
+                totalDistance * 1000
+            ) / 1000
+
+    };
+
+}
+
+/* =========================================================
+   STAR HOPPER - DISPLAY ROUTE
+   ========================================================= */
+
+function displayHopperRoute(data) {
+
+    let html =
+        "<div class=\"hopper-route-results\">";
+
+
+    html +=
+        "<div class=\"hopper-route-title\">Route</div>";
+
+
+    html +=
+        "<div class=\"hopper-route-path\">";
+
+
+    data.route.forEach(
+        (star, index) => {
+
+            html +=
+                `<span class="star-name">` +
+                `${escapeHTML(getStarName(star))}` +
+                `</span>`;
+
+
+            if (
+                index <
+                data.route.length - 1
+            ) {
+
+                html +=
+                    " → ";
+
+            }
+
+        }
+    );
+
+
+    html +=
+        "</div>";
+
+
+    html +=
+        "<div class=\"hopper-hops\">";
+
+
+    data.hops.forEach(
+        (hop, index) => {
+
+            html +=
+                `<div class="hopper-hop">` +
+
+                `<span class="hopper-hop-number">` +
+                `${index + 1}.` +
+                `</span> ` +
+
+                `<span class="star-name">` +
+                `${escapeHTML(getStarName(hop.from))}` +
+                `</span>` +
+
+                ` → ` +
+
+                `<span class="star-name">` +
+                `${escapeHTML(getStarName(hop.to))}` +
+                `</span>` +
+
+                `: ` +
+
+                `<span class="distance">` +
+                `${hop.distance.toLocaleString()} light-years` +
+                `</span>` +
+
+                `</div>`;
+
+        }
+    );
+
+
+    html +=
+        "</div>";
+
+
+    html +=
+        `<div class="hopper-total">` +
+        `Total distance: ` +
+        `<span class="distance">` +
+        `${data.totalDistance.toLocaleString()} light-years` +
+        `</span>` +
+        `</div>`;
+
+
+    html +=
+        "</div>";
+
+
+    const hopperResultElement =
+        document.getElementById("hopper-result");
+
+    hopperResultElement.innerHTML =
+        html;
 
 }
 
@@ -4539,3 +4857,351 @@ addHopperStarButton.addEventListener(
 
     }
 );
+
+function initializeHopperMap(route) {
+
+    const container =
+        document.getElementById("hopper-star-map");
+
+    if (!container) {
+        return;
+    }
+
+    // Clear any previous Hopper map
+    container.innerHTML = "";
+
+    function starToPosition(star) {
+
+        const distance = 3.26 * star.dist;
+
+        const ra =
+            star.ra * 15 * Math.PI / 180;
+
+        const dec =
+            star.dec * Math.PI / 180;
+
+        return new THREE.Vector3(
+
+            distance *
+            Math.cos(dec) *
+            Math.cos(ra),
+
+            distance *
+            Math.sin(dec),
+
+            distance *
+            Math.cos(dec) *
+            Math.sin(ra)
+
+        );
+    }
+
+    const scene =
+        new THREE.Scene();
+
+    const camera =
+        new THREE.PerspectiveCamera(
+            45,
+            container.clientWidth /
+                container.clientHeight,
+            0.1,
+            100000
+        );
+
+    const renderer =
+        new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true
+        });
+
+    renderer.setPixelRatio(
+        Math.min(window.devicePixelRatio, 2)
+    );
+
+    renderer.setSize(
+        container.clientWidth,
+        container.clientHeight
+    );
+
+    container.appendChild(renderer.domElement);
+
+    const controls =
+        new THREE.OrbitControls(
+            camera,
+            renderer.domElement
+        );
+
+    controls.enableDamping = true;
+
+    /*
+     * ---------------------------------------------------------
+     * STAR POSITIONS
+     * ---------------------------------------------------------
+     */
+
+    const positions = route.map(star =>
+        starToPosition(star)
+    );
+
+    /*
+     * Sol is always the centre/reference point.
+     * If the route doesn't explicitly contain Sol, add it
+     * visually as the starting point.
+     */
+
+    const solPosition =
+        new THREE.Vector3(0, 0, 0);
+
+    /*
+     * ---------------------------------------------------------
+     * GALACTIC PLANE
+     * ---------------------------------------------------------
+     */
+
+    const planeGeometry =
+        new THREE.PlaneGeometry(
+            200,
+            200
+        );
+
+    const planeMaterial =
+        new THREE.MeshBasicMaterial({
+            transparent: true,
+            opacity: 0.08,
+            side: THREE.DoubleSide
+        });
+
+    const galacticPlane =
+        new THREE.Mesh(
+            planeGeometry,
+            planeMaterial
+        );
+
+    galacticPlane.rotation.x =
+        Math.PI / 2;
+
+    scene.add(galacticPlane);
+
+    /*
+     * ---------------------------------------------------------
+     * STAR SPRITES
+     * ---------------------------------------------------------
+     */
+
+    const starObjects = [];
+
+    route.forEach((star, index) => {
+
+        const position =
+            positions[index].clone();
+
+        const spriteMaterial =
+            new THREE.SpriteMaterial({
+                color: 0xffffff
+            });
+
+        const sprite =
+            new THREE.Sprite(
+                spriteMaterial
+            );
+
+        sprite.position.copy(position);
+
+        sprite.scale.set(
+            1.5,
+            1.5,
+            1.5
+        );
+
+        sprite.userData.star =
+            star;
+
+        sprite.userData.index =
+            index;
+
+        scene.add(sprite);
+
+        starObjects.push(sprite);
+    });
+
+    /*
+     * ---------------------------------------------------------
+     * ROUTE LINES
+     * ---------------------------------------------------------
+     */
+
+    const routeLines = [];
+
+    for (
+        let i = 0;
+        i < positions.length - 1;
+        i++
+    ) {
+
+        const geometry =
+            new THREE.BufferGeometry()
+                .setFromPoints([
+                    positions[i],
+                    positions[i + 1]
+                ]);
+
+        const material =
+            new THREE.LineBasicMaterial({
+                color: 0x4488ff,
+                transparent: true,
+                opacity: 0.7
+            });
+
+        const line =
+            new THREE.Line(
+                geometry,
+                material
+            );
+
+        line.userData.baseOpacity =
+            0.7;
+
+        line.userData.routeIndex =
+            i;
+
+        scene.add(line);
+
+        routeLines.push(line);
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * CAMERA
+     * ---------------------------------------------------------
+     */
+
+    const allPositions = [
+        solPosition,
+        ...positions
+    ];
+
+    const box =
+        new THREE.Box3();
+
+    allPositions.forEach(position => {
+        box.expandByPoint(position);
+    });
+
+    const center =
+        new THREE.Vector3();
+
+    box.getCenter(center);
+
+    const size =
+        new THREE.Vector3();
+
+    box.getSize(size);
+
+    const maxDimension =
+        Math.max(
+            size.x,
+            size.y,
+            size.z,
+            1
+        );
+
+    camera.position.set(
+        0,
+        maxDimension * 0.8,
+        maxDimension * 1.8
+    );
+
+    camera.lookAt(center);
+
+    controls.target.copy(center);
+
+    /*
+     * ---------------------------------------------------------
+     * RESIZE
+     * ---------------------------------------------------------
+     */
+
+    function onResize() {
+
+        const width =
+            container.clientWidth;
+
+        const height =
+            container.clientHeight;
+
+        if (!width || !height) {
+            return;
+        }
+
+        camera.aspect =
+            width / height;
+
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(
+            width,
+            height
+        );
+    }
+
+    window.addEventListener(
+        "resize",
+        onResize
+    );
+
+    /*
+     * ---------------------------------------------------------
+     * ANIMATION
+     * ---------------------------------------------------------
+     */
+
+    function animate() {
+
+        requestAnimationFrame(
+            animate
+        );
+
+        controls.update();
+
+        renderer.render(
+            scene,
+            camera
+        );
+    }
+
+    animate();
+}
+
+
+const hopperCalculateButton =
+    document.getElementById("calculate-hopper");
+
+
+if (hopperCalculateButton) {
+
+    hopperCalculateButton.addEventListener(
+        "click",
+        function () {
+
+            const hopperData =
+                calculateHopperRoute();
+
+
+            if (!hopperData) {
+                return;
+            }
+
+
+            displayHopperRoute(
+                hopperData
+            );
+
+
+            initializeHopperMap(
+                hopperData.route
+            );
+
+        }
+    );
+
+}
