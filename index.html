@@ -132,7 +132,7 @@
     </div>
 
 
-    <!-- =====================================================
+<!-- =====================================================
      STAR HOPPER
      ===================================================== -->
 
@@ -148,14 +148,18 @@
 
     <div id="star-hopper-form">
 
-        <div class="hopper-fields">
+        <div
+            id="hopper-fields"
+            class="hopper-fields">
 
 
             <!-- =================================================
                  STAR HOP 1
                  ================================================= -->
 
-            <div class="form-group autocomplete-group">
+            <div
+                class="form-group autocomplete-group hopper-field"
+                data-star-number="1">
 
                 <label
                     class="form-label"
@@ -184,7 +188,9 @@
                  STAR HOP 2
                  ================================================= -->
 
-            <div class="form-group autocomplete-group">
+            <div
+                class="form-group autocomplete-group hopper-field"
+                data-star-number="2">
 
                 <label
                     class="form-label"
@@ -209,6 +215,47 @@
             </div>
 
 
+        </div>
+
+
+        <!-- =====================================================
+             ADD STAR
+             ===================================================== -->
+
+        <div class="hopper-add-btn">
+
+            <button
+                type="button"
+                id="add-hopper-star">
+                + Add Star
+            </button>
+
+        </div>
+
+
+        <!-- =====================================================
+             CALCULATE ROUTE
+             ===================================================== -->
+
+        <div class="form-btn hopper-submit-btn">
+
+            <button
+                type="button"
+                id="calculate-hopper">
+                Calculate Route
+            </button>
+
+        </div>
+
+
+        <!-- =====================================================
+             HOPPER RESULTS
+             ===================================================== -->
+
+        <div
+            id="hopper-result"
+            class="result"
+            aria-live="polite">
         </div>
 
     </div>

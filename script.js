@@ -4292,3 +4292,250 @@ setupAutocomplete(
     "hopper-star-2",
     "hopper-suggestions-2"
 );
+/* =========================================================
+   STAR HOPPER - ADD / REMOVE STARS
+   ========================================================= */
+
+const hopperFields =
+    document.getElementById("hopper-fields");
+
+const addHopperStarButton =
+    document.getElementById("add-hopper-star");
+
+
+/*
+ * The first two stars are permanent.
+ * Additional stars can be added or removed.
+ */
+let hopperNextId = 3;
+
+
+/*
+ * ---------------------------------------------------------
+ * CREATE A NEW STAR FIELD
+ * ---------------------------------------------------------
+ */
+
+function createHopperStarField(starId, displayNumber) {
+
+    const field =
+        document.createElement("div");
+
+    field.className =
+        "form-group autocomplete-group hopper-field";
+
+    field.dataset.starNumber =
+        displayNumber;
+
+
+    /*
+     * Label
+     */
+    const label =
+        document.createElement("label");
+
+    label.className =
+        "form-label";
+
+    label.htmlFor =
+        `hopper-star-${starId}`;
+
+    label.textContent =
+        `Star ${displayNumber}`;
+
+
+    /*
+     * Input
+     */
+    const input =
+        document.createElement("input");
+
+    input.className =
+        "form-control";
+
+    input.id =
+        `hopper-star-${starId}`;
+
+    input.name =
+       `HopperStar${starId}`;
+
+    input.type =
+       "text";
+
+    input.placeholder =
+        `Enter the name of Star ${displayNumber}`;
+
+    input.autocomplete =
+        "off";
+
+
+    /*
+     * Suggestions dropdown
+     */
+    const suggestions =
+        document.createElement("div");
+
+    suggestions.id =
+        `hopper-suggestions-${starId}`;
+
+    suggestions.className =
+        "suggestions";
+
+
+    /*
+     * Remove button
+     */
+    const removeButton =
+        document.createElement("button");
+
+    removeButton.type =
+        "button";
+
+    removeButton.className =
+        "hopper-remove-btn";
+
+    removeButton.textContent =
+        "Remove";
+
+
+    /*
+     * Remove this field when clicked.
+     */
+    removeButton.addEventListener(
+        "click",
+        function() {
+
+            field.remove();
+
+            renumberHopperFields();
+
+        }
+    );
+
+
+    /*
+     * Build the field.
+     */
+    field.appendChild(
+        label
+    );
+
+    field.appendChild(
+        input
+    );
+
+    field.appendChild(
+        suggestions
+    );
+
+    field.appendChild(
+        removeButton
+    );
+
+
+    /*
+     * Add it to the page.
+     */
+    hopperFields.appendChild(
+        field
+    );
+
+
+    /*
+     * IMPORTANT:
+     *
+     * Use the exact same autocomplete function
+     * as the original calculator.
+     */
+    setupAutocomplete(
+      `hopper-star-${starId}`,
+      `hopper-suggestions-${starId}`
+    );
+
+
+    return field;
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * RENUMBER FIELDS
+ * ---------------------------------------------------------
+ *
+ * If Star 3 is removed from:
+ *
+ * Star 1
+ * Star 2
+ * Star 3
+ * Star 4
+ *
+ * the remaining fields become:
+ *
+ * Star 1
+ * Star 2
+ * Star 3
+ *
+ * This keeps the route sequential.
+ */
+
+function renumberHopperFields() {
+
+    const fields =
+        hopperFields.querySelectorAll(
+            ".hopper-field"
+        );
+
+
+    fields.forEach(
+        (field, index) => {
+
+            const starNumber =
+                index + 1;
+
+
+            const label =
+                field.querySelector(
+                    ".form-label"
+                );
+
+
+            if (label) {
+
+                label.textContent =
+                    `Star ${starNumber}`;
+
+            }
+
+        }
+    );
+
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * ADD STAR BUTTON
+ * ---------------------------------------------------------
+ */
+
+addHopperStarButton.addEventListener(
+    "click",
+    function() {
+
+        const starId =
+            hopperNextId++;
+
+        const displayNumber =
+            hopperFields.querySelectorAll(
+                ".hopper-field"
+            ).length + 1;
+
+
+        createHopperStarField(
+            starId,
+            displayNumber
+        );
+
+    }
+);
