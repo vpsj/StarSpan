@@ -4278,3 +4278,17 @@ tabButtons.forEach(button => {
     });
 
 });
+
+/* =========================================================
+   STAR HOPPER AUTOCOMPLETE
+   ========================================================= */
+
+setupAutocomplete(
+    "hopper-star-1",
+    "hopper-suggestions-1"
+);
+
+setupAutocomplete(
+    "hopper-star-2",
+    "hopper-suggestions-2"
+);
