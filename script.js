@@ -1292,7 +1292,7 @@ const defaultViewDirection =
         .multiplyScalar(
             Math.cos(planeViewAngle)
         )
-        .add(
+        .sub(
             galacticNorth
                 .clone()
                 .multiplyScalar(
@@ -4095,3 +4095,75 @@ renderer.dispose();
         };
 
 }
+
+/* =========================================================
+   TAB SWITCHING
+   ========================================================= */
+
+const tabButtons =
+    document.querySelectorAll(".tab-button");
+
+const tabContents =
+    document.querySelectorAll(".tab-content");
+
+
+tabButtons.forEach(button => {
+
+    button.addEventListener("click", function() {
+
+        const targetTab =
+            button.dataset.tab;
+
+
+        /*
+         * Remove active state from every tab button.
+         */
+        tabButtons.forEach(tabButton => {
+
+            tabButton.classList.remove(
+                "active"
+            );
+
+        });
+
+
+        /*
+         * Hide every tab.
+         */
+        tabContents.forEach(tabContent => {
+
+            tabContent.classList.remove(
+                "active"
+            );
+
+        });
+
+
+        /*
+         * Activate the clicked tab.
+         */
+        button.classList.add(
+            "active"
+        );
+
+
+        /*
+         * Show the corresponding content.
+         */
+        const targetContent =
+            document.getElementById(
+                targetTab
+            );
+
+
+        if (targetContent) {
+
+            targetContent.classList.add(
+                "active"
+            );
+
+        }
+
+    });
+
+});
