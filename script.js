@@ -3150,47 +3150,76 @@ function handlePointer(
         findInteraction(event);
 
 
+    /*
+     * =====================================================
+     * QUERIED STAR
+     * =====================================================
+     *
+     * Hover:
+     *     Show the star name and vertex angle.
+     *
+     * Click:
+     *     Change the OrbitControls focus to this star.
+     */
     if (
-    interaction.type ===
-    "background"
-) {
+        interaction.type ===
+        "vertex"
+    ) {
 
-    resetLineHighlight();
-
-
-    showTooltip(
-        interaction.background.name,
-
-        `${interaction.background.solDistance.toFixed(2)} light-years from Sol`
-    );
+        resetLineHighlight();
 
 
-    moveTooltip(
-        interaction.position.x,
-        interaction.position.y
-    );
+        setHoveredImportantStar(
+            interaction.vertex
+        );
+
+
+        showTooltip(
+            interaction.vertex.name,
+
+            `Angle: ${
+                calculateVertexAngle(
+                    interaction.vertex
+                ).toFixed(3)
+            }°`
+        );
+
+
+        moveTooltip(
+            interaction.position.x,
+            interaction.position.y
+        );
+
+
+        if (isClick) {
+
+            controls.target.copy(
+                interaction.vertex.position
+            );
+
+            controls.update();
+
+        }
+
+
+        return true;
+    }
 
 
     /*
-     * Clicking a background star must NOT change
-     * the current camera focus.
-     *
-     * Background stars are informational only.
+     * =====================================================
+     * ROUTE LINE
+     * =====================================================
      */
-
-    return true;
-}
-
-
-    setHoveredImportantStar(
-        null
-    );
-
-
     if (
         interaction.type ===
         "line"
     ) {
+
+        setHoveredImportantStar(
+            null
+        );
+
 
         resetLineHighlight();
 
@@ -3220,14 +3249,38 @@ function handlePointer(
         );
 
 
+        /*
+         * IMPORTANT:
+         *
+         * Clicking a line does NOT change the
+         * current camera focus.
+         */
         return true;
     }
 
 
+    /*
+     * =====================================================
+     * BACKGROUND STAR
+     * =====================================================
+     *
+     * Background stars are informational only.
+     *
+     * Hover:
+     *     Show their information.
+     *
+     * Click:
+     *     DO NOT change camera focus.
+     */
     if (
         interaction.type ===
         "background"
     ) {
+
+        setHoveredImportantStar(
+            null
+        );
+
 
         resetLineHighlight();
 
@@ -3245,35 +3298,35 @@ function handlePointer(
         );
 
 
-        if (isClick) {
-
-            controls.target.copy(
-                interaction.background.position
-            );
-
-            controls.update();
-
-        }
-
-
+        /*
+         * Deliberately no controls.target change.
+         */
         return true;
     }
 
 
+    /*
+     * =====================================================
+     * EMPTY SPACE
+     * =====================================================
+     *
+     * Clicking empty space must leave the current
+     * camera focus completely unchanged.
+     */
+    setHoveredImportantStar(
+        null
+    );
+
+
     resetLineHighlight();
 
-hideTooltip();
+    hideTooltip();
 
 
-/*
- * Clicking empty space must NOT change
- * the current camera focus.
- *
- * OrbitControls will continue rotating around
- * whatever target is currently active.
- */
-
-return false;
+    /*
+     * Deliberately no controls.target change.
+     */
+    return false;
 }
 
 
