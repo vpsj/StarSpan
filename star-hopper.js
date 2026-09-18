@@ -677,17 +677,7 @@ function initializeHopperMap(route) {
       renderer.domElement
     );
 
-    const controls =
-     new THREE.OrbitControls(
-        camera,
-        container
-    );
-
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.enablePan = true;
-    controls.enableZoom = true;
-    /*
+        /*
      * ---------------------------------------------------------
      * STAR POSITIONS
      * ---------------------------------------------------------
@@ -2397,9 +2387,32 @@ renderer.domElement.addEventListener(
         .multiplyScalar(-1)
  );
 
- camera.lookAt(
+  camera.lookAt(
     new THREE.Vector3(0, 0, 0)
  );
+
+
+ /*
+  * ---------------------------------------------------------
+  * CONTROLS
+  * ---------------------------------------------------------
+  *
+  * Create OrbitControls only after the camera has been
+  * completely positioned and oriented.
+  *
+  * This matches the working Star Distance Calculator.
+  */
+
+ const controls =
+    new THREE.OrbitControls(
+        camera,
+        container
+    );
+
+ controls.enableDamping = true;
+ controls.dampingFactor = 0.05;
+ controls.enablePan = true;
+ controls.enableZoom = true;
 
  controls.target.set(
     0,
@@ -2407,14 +2420,14 @@ renderer.domElement.addEventListener(
     0
  );
 
-     controls.update();
+ controls.update();
 
 
-    /*
-     * ---------------------------------------------------------
-     * HOPPER MAP CLEANUP
-     * ---------------------------------------------------------
-     */
+ /*
+  * ---------------------------------------------------------
+  * HOPPER MAP CLEANUP
+  * ---------------------------------------------------------
+  */
 
     container._hopperMapCleanup =
         function() {
