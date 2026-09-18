@@ -4313,4 +4313,3 @@ tabButtons.forEach(button => {
     });
 
 });
-<script src="star-hopper.js"></script>
