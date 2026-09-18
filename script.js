@@ -4902,6 +4902,15 @@ function initializeHopperMap(route) {
         return;
     }
 
+    /*
+     * Make the Hopper map visible.
+     *
+     * .star-map is hidden by default in CSS,
+     * so the map must explicitly be shown when
+     * it is initialized.
+     */
+    container.style.display = "block";
+
 
     /*
      * ---------------------------------------------------------
