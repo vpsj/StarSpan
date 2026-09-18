@@ -2307,69 +2307,62 @@ renderer.domElement.addEventListener(
 
 /*
  * ---------------------------------------------------------
- * CLICK A ROUTE STAR
+ * FOCUS ON A ROUTE STAR
  * ---------------------------------------------------------
  *
- * Clicking a Hopper star changes the OrbitControls
- * focus to that star.
+ * The existing mousemove handler already determines
+ * which Hopper star is under the cursor and stores it
+ * in hoveredVertex.
  *
- * This does NOT change the route or camera position.
- * It only changes the point around which the camera
- * orbits.
+ * When the mouse button is pressed:
+ *
+ *     hoveredVertex
+ *          ↓
+ *     controls.target
+ *          ↓
+ *     controls.update()
+ *
+ * This avoids performing a second raycast during
+ * pointer-down.
  */
 
-function handleHopperStarClick(
+function handleHopperPointerDown(
     event
 ) {
 
-    updateMousePosition(
-        event
-    );
+    /*
+     * Only handle mouse interaction.
+     */
+    if (
+        event.pointerType !==
+        "mouse"
+    ) {
 
-
-    raycaster.setFromCamera(
-        mouse,
-        camera
-    );
-
-
-    const vertexHits =
-        raycaster.intersectObjects(
-            interactiveVertices.map(
-                item => item.sprite
-            ),
-            false
-        );
-
-
-    if (vertexHits.length === 0) {
         return;
-    }
 
-
-    const hitObject =
-        vertexHits[0].object;
-
-
-    const hit =
-        interactiveVertices.find(
-            item =>
-                item.sprite ===
-                hitObject
-        );
-
-
-    if (!hit) {
-        return;
     }
 
 
     /*
-     * Change the OrbitControls focus to
-     * the clicked Hopper star.
+     * Nothing is currently being hovered.
+     */
+    if (!hoveredVertex) {
+
+        return;
+
+    }
+
+
+    /*
+     * -----------------------------------------------------
+     * CHANGE CAMERA FOCUS
+     * -----------------------------------------------------
+     *
+     * Focus the camera on the exact route vertex
+     * currently under the mouse.
      */
     controls.target.copy(
-        hit.vertex.position
+        hoveredVertex.vertex.position
     );
 
 
@@ -2380,13 +2373,14 @@ function handleHopperStarClick(
 
 /*
  * ---------------------------------------------------------
- * CLICK EVENT LISTENER
+ * POINTER DOWN EVENT LISTENER
  * ---------------------------------------------------------
  */
 
 renderer.domElement.addEventListener(
-    "click",
-    handleHopperStarClick
+    "pointerdown",
+    handleHopperPointerDown,
+    true
 );
 
 
@@ -2636,8 +2630,9 @@ renderer.domElement.removeEventListener(
 );
 
 renderer.domElement.removeEventListener(
-    "click",
-    handleHopperStarClick
+    "pointerdown",
+    handleHopperPointerDown,
+    true
 );
 
 
