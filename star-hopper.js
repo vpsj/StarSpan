@@ -2305,6 +2305,91 @@ renderer.domElement.addEventListener(
 );
 
 
+/*
+ * ---------------------------------------------------------
+ * CLICK A ROUTE STAR
+ * ---------------------------------------------------------
+ *
+ * Clicking a Hopper star changes the OrbitControls
+ * focus to that star.
+ *
+ * This does NOT change the route or camera position.
+ * It only changes the point around which the camera
+ * orbits.
+ */
+
+function handleHopperStarClick(
+    event
+) {
+
+    updateMousePosition(
+        event
+    );
+
+
+    raycaster.setFromCamera(
+        mouse,
+        camera
+    );
+
+
+    const vertexHits =
+        raycaster.intersectObjects(
+            interactiveVertices.map(
+                item => item.sprite
+            ),
+            false
+        );
+
+
+    if (vertexHits.length === 0) {
+        return;
+    }
+
+
+    const hitObject =
+        vertexHits[0].object;
+
+
+    const hit =
+        interactiveVertices.find(
+            item =>
+                item.sprite ===
+                hitObject
+        );
+
+
+    if (!hit) {
+        return;
+    }
+
+
+    /*
+     * Change the OrbitControls focus to
+     * the clicked Hopper star.
+     */
+    controls.target.copy(
+        hit.vertex.position
+    );
+
+
+    controls.update();
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * CLICK EVENT LISTENER
+ * ---------------------------------------------------------
+ */
+
+renderer.domElement.addEventListener(
+    "click",
+    handleHopperStarClick
+);
+
+
     /*
      * ---------------------------------------------------------
      * CAMERA
@@ -2548,6 +2633,11 @@ renderer.domElement.removeEventListener(
 renderer.domElement.removeEventListener(
     "mouseleave",
     handleHopperMouseLeave
+);
+
+renderer.domElement.removeEventListener(
+    "click",
+    handleHopperStarClick
 );
 
 
