@@ -1854,7 +1854,7 @@ function calculateHopperVertexAngle(
  * ---------------------------------------------------------
  */
 
- const routeLines = [];
+  const routeLines = [];
 
 
  function createRouteLine(
@@ -1868,14 +1868,18 @@ function calculateHopperVertexAngle(
 
     /*
      * =====================================================
-     * PC ROUTE LINE
+     * PC ROUTE
      * =====================================================
      *
      * Normal state:
-     *     Thin dotted/dashed line.
+     *     Series of small directional arrows.
      *
      * Hover state:
      *     Thick solid line.
+     *
+     * Every arrow points:
+     *
+     *     START → END
      */
 
 
@@ -1889,24 +1893,25 @@ function calculateHopperVertexAngle(
 
     /*
      * -----------------------------------------------------
-     * NORMAL DOTTED LINE
+     * INVISIBLE INTERACTION LINE
      * -----------------------------------------------------
+     *
+     * Keep the Line object so the existing raycaster can
+     * still detect the route segment.
+     *
+     * It is visually invisible because its opacity is 0.
      */
 
     const material =
-        new THREE.LineDashedMaterial({
+        new THREE.LineBasicMaterial({
 
             color: 0x9bdcff,
 
             transparent: true,
 
-            opacity: 0.75,
+            opacity: 0,
 
-            depthWrite: false,
-
-            dashSize: 0.35,
-
-            gapSize: 0.20
+            depthWrite: false
 
         });
 
@@ -1918,14 +1923,178 @@ function calculateHopperVertexAngle(
         );
 
 
+    scene.add(
+        line
+    );
+
+
     /*
-     * LineDashedMaterial requires this.
+     * -----------------------------------------------------
+     * DIRECTIONAL ARROWS
+     * -----------------------------------------------------
+     *
+     * Create a sequence of small arrowheads along
+     * the route segment.
+     *
+     * They all point in the direction:
+     *
+     *     start → end
      */
-    line.computeLineDistances();
+
+    const arrowGroup =
+        new THREE.Group();
+
+
+    const direction =
+        end.clone()
+            .sub(start);
+
+
+    const length =
+        direction.length();
+
+
+    const normalizedDirection =
+        direction.clone()
+            .normalize();
+
+
+    /*
+     * Number of arrows is based on segment length.
+     *
+     * Short segments get fewer arrows.
+     * Long segments get more.
+     */
+    const arrowCount =
+        Math.max(
+            3,
+            Math.min(
+                12,
+                Math.floor(
+                    length / 2
+                )
+            )
+        );
+
+
+    const arrowLength =
+        THREE.MathUtils.clamp(
+            length * 0.035,
+            0.22,
+            0.65
+        );
+
+
+    const arrowRadius =
+        THREE.MathUtils.clamp(
+            arrowLength * 0.38,
+            0.09,
+            0.20
+        );
+
+
+    const arrowGeometry =
+        new THREE.ConeGeometry(
+            arrowRadius,
+            arrowLength,
+            6,
+            1,
+            false
+        );
+
+
+    const arrowMaterial =
+        new THREE.MeshBasicMaterial({
+
+            color: 0x9bdcff,
+
+            transparent: true,
+
+            opacity: 0.82,
+
+            depthWrite: false,
+
+            depthTest: false
+
+        });
+
+
+    /*
+     * ConeGeometry points along +Y.
+     *
+     * Rotate +Y into the actual route direction.
+     */
+    const arrowQuaternion =
+        new THREE.Quaternion();
+
+
+    arrowQuaternion.setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        normalizedDirection
+    );
+
+
+    /*
+     * Keep the first and last arrows away from
+     * the stars themselves.
+     */
+    const startFraction =
+        0.10;
+
+    const endFraction =
+        0.90;
+
+
+    for (
+        let i = 0;
+        i < arrowCount;
+        i++
+    ) {
+
+        const fraction =
+            startFraction +
+            (
+                (endFraction - startFraction) *
+                (
+                    i /
+                    Math.max(
+                        arrowCount - 1,
+                        1
+                    )
+                )
+            );
+
+
+        const arrow =
+            new THREE.Mesh(
+                arrowGeometry,
+                arrowMaterial
+            );
+
+
+        arrow.position.copy(
+            start.clone()
+                .lerp(
+                    end,
+                    fraction
+                )
+        );
+
+
+        arrow.quaternion.copy(
+            arrowQuaternion
+        );
+
+
+        arrowGroup.add(
+            arrow
+        );
+
+    }
 
 
     scene.add(
-        line
+        arrowGroup
     );
 
 
@@ -1993,11 +2162,11 @@ function calculateHopperVertexAngle(
 
     if (isTouchDevice) {
 
-        const direction =
+        const mobileDirection =
             end.clone().sub(start);
 
-        const length =
-            direction.length();
+        const mobileLength =
+            mobileDirection.length();
 
         const midpoint =
             start.clone()
@@ -2009,7 +2178,7 @@ function calculateHopperVertexAngle(
             new THREE.CylinderGeometry(
                 0.004,
                 0.004,
-                length,
+                mobileLength,
                 8,
                 1,
                 false
@@ -2037,7 +2206,7 @@ function calculateHopperVertexAngle(
             new THREE.CylinderGeometry(
                 0.012,
                 0.012,
-                length,
+                mobileLength,
                 8,
                 1,
                 false
@@ -2076,7 +2245,7 @@ function calculateHopperVertexAngle(
 
         quaternion.setFromUnitVectors(
             new THREE.Vector3(0, 1, 0),
-            direction.normalize()
+            mobileDirection.normalize()
         );
 
 
@@ -2121,6 +2290,9 @@ function calculateHopperVertexAngle(
         highlightLine:
             highlightLine,
 
+        arrowGroup:
+            arrowGroup,
+
         mobileLine:
             mobileLine,
 
@@ -2161,6 +2333,23 @@ function calculateHopperVertexAngle(
 
     return data;
 }
+
+
+/*
+ * One line for every consecutive pair.
+ *
+ * Example:
+ *
+ * Sol → Sirius → Betelgeuse → Sol → Procyon
+ *
+ * produces:
+ *
+ * Sol → Sirius
+ * Sirius → Betelgeuse
+ * Betelgeuse → Sol
+ * Sol → Procyon
+ */
+
 
 
  /*
