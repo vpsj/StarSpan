@@ -172,8 +172,426 @@ function createHopperStarField(starId, displayNumber) {
     );
 
 
-    return field;
+      return field;
 }
+
+
+/*
+ * ---------------------------------------------------------
+ * HOPPER FIELD DRAG / REORDER
+ * ---------------------------------------------------------
+ *
+ * The Star label acts as the drag handle.
+ *
+ * Dragging a field changes the actual DOM order.
+ * getHopperRoute() already reads fields in DOM order,
+ * so the new order automatically becomes the route order.
+ */
+
+let hopperDraggedField =
+    null;
+
+let hopperDragPointerId =
+    null;
+
+let hopperDragHandle =
+    null;
+
+let hopperDragPlaceholder =
+    null;
+
+
+/*
+ * ---------------------------------------------------------
+ * START DRAG
+ * ---------------------------------------------------------
+ */
+
+function startHopperFieldDrag(
+    event
+) {
+
+    /*
+     * Only use the primary pointer.
+     */
+    if (
+        event.button !== 0 ||
+        event.isPrimary === false
+    ) {
+
+        return;
+
+    }
+
+
+    const handle =
+        event.target.closest(
+            ".form-label"
+        );
+
+
+    if (
+        !handle ||
+        !hopperFields.contains(handle)
+    ) {
+
+        return;
+
+    }
+
+
+    const field =
+        handle.closest(
+            ".hopper-field"
+        );
+
+
+    if (!field) {
+        return;
+    }
+
+
+    event.preventDefault();
+
+
+    hopperDraggedField =
+        field;
+
+    hopperDragPointerId =
+        event.pointerId;
+
+    hopperDragHandle =
+        handle;
+
+
+    /*
+     * Create a placeholder with the same
+     * height as the field being moved.
+     */
+    hopperDragPlaceholder =
+        document.createElement(
+            "div"
+        );
+
+    hopperDragPlaceholder.className =
+        "hopper-drag-placeholder";
+
+    hopperDragPlaceholder.style.height =
+        `${field.getBoundingClientRect().height}px`;
+
+
+    hopperFields.insertBefore(
+        hopperDragPlaceholder,
+        field
+    );
+
+
+    field.classList.add(
+        "hopper-dragging"
+    );
+
+    handle.classList.add(
+        "hopper-drag-handle-active"
+    );
+
+
+    /*
+     * Keep receiving pointer events even when
+     * the pointer leaves the label.
+     */
+    if (
+        handle.setPointerCapture
+    ) {
+
+        handle.setPointerCapture(
+            event.pointerId
+        );
+
+    }
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * MOVE DRAGGED FIELD
+ * ---------------------------------------------------------
+ */
+
+function moveHopperFieldDrag(
+    event
+) {
+
+    if (
+        !hopperDraggedField ||
+        event.pointerId !==
+            hopperDragPointerId
+    ) {
+
+        return;
+
+    }
+
+
+    const element =
+        document.elementFromPoint(
+            event.clientX,
+            event.clientY
+        );
+
+
+    if (!element) {
+        return;
+    }
+
+
+    const targetField =
+        element.closest(
+            ".hopper-field"
+        );
+
+
+    if (
+        !targetField ||
+        targetField ===
+            hopperDraggedField ||
+        targetField.parentNode !==
+            hopperFields
+    ) {
+
+        return;
+
+    }
+
+
+    const rect =
+        targetField.getBoundingClientRect();
+
+
+    const insertBefore =
+        event.clientY <
+        rect.top +
+        rect.height / 2;
+
+
+    if (insertBefore) {
+
+        hopperFields.insertBefore(
+            hopperDragPlaceholder,
+            targetField
+        );
+
+    } else {
+
+        hopperFields.insertBefore(
+            hopperDragPlaceholder,
+            targetField.nextSibling
+        );
+
+    }
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * FINISH DRAG
+ * ---------------------------------------------------------
+ */
+
+function finishHopperFieldDrag(
+    event
+) {
+
+    if (
+        !hopperDraggedField ||
+        event.pointerId !==
+            hopperDragPointerId
+    ) {
+
+        return;
+
+    }
+
+
+    /*
+     * Put the actual field where the placeholder is.
+     */
+    if (
+        hopperDragPlaceholder &&
+        hopperDragPlaceholder.parentNode ===
+            hopperFields
+    ) {
+
+        hopperFields.insertBefore(
+            hopperDraggedField,
+            hopperDragPlaceholder
+        );
+
+    }
+
+
+    if (hopperDragPlaceholder) {
+
+        hopperDragPlaceholder.remove();
+
+    }
+
+
+    hopperDraggedField.classList.remove(
+        "hopper-dragging"
+    );
+
+
+    if (hopperDragHandle) {
+
+        hopperDragHandle.classList.remove(
+            "hopper-drag-handle-active"
+        );
+
+    }
+
+
+    if (
+        hopperDragHandle &&
+        hopperDragHandle.releasePointerCapture
+    ) {
+
+        try {
+
+            hopperDragHandle.releasePointerCapture(
+                hopperDragPointerId
+            );
+
+        } catch (error) {
+
+            /*
+             * Pointer capture may already have
+             * been released by the browser.
+             */
+
+        }
+
+    }
+
+
+    hopperDraggedField =
+        null;
+
+    hopperDragPointerId =
+        null;
+
+    hopperDragHandle =
+        null;
+
+    hopperDragPlaceholder =
+        null;
+
+
+    /*
+     * Update Star 1 / Star 2 / Star 3...
+     */
+    renumberHopperFields();
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * CANCEL DRAG
+ * ---------------------------------------------------------
+ */
+
+function cancelHopperFieldDrag(
+    event
+) {
+
+    if (
+        !hopperDraggedField ||
+        event.pointerId !==
+            hopperDragPointerId
+    ) {
+
+        return;
+
+    }
+
+
+    if (
+        hopperDragPlaceholder &&
+        hopperDragPlaceholder.parentNode ===
+            hopperFields
+    ) {
+
+        hopperFields.insertBefore(
+            hopperDraggedField,
+            hopperDragPlaceholder
+        );
+
+    }
+
+
+    if (hopperDragPlaceholder) {
+
+        hopperDragPlaceholder.remove();
+
+    }
+
+
+    hopperDraggedField.classList.remove(
+        "hopper-dragging"
+    );
+
+
+    if (hopperDragHandle) {
+
+        hopperDragHandle.classList.remove(
+            "hopper-drag-handle-active"
+        );
+
+    }
+
+
+    hopperDraggedField =
+        null;
+
+    hopperDragPointerId =
+        null;
+
+    hopperDragHandle =
+        null;
+
+    hopperDragPlaceholder =
+        null;
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * DRAG EVENTS
+ * ---------------------------------------------------------
+ */
+
+hopperFields.addEventListener(
+    "pointerdown",
+    startHopperFieldDrag
+);
+
+document.addEventListener(
+    "pointermove",
+    moveHopperFieldDrag
+);
+
+document.addEventListener(
+    "pointerup",
+    finishHopperFieldDrag
+);
+
+document.addEventListener(
+    "pointercancel",
+    cancelHopperFieldDrag
+);
 
 
 /*

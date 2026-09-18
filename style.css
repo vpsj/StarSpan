@@ -1386,3 +1386,44 @@ body {
     }
 
 }
+
+/*
+ * =========================================================
+ * STAR HOPPER - DRAG / REORDER
+ * =========================================================
+ */
+
+.hopper-field .form-label {
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+}
+
+
+.hopper-field .form-label::before {
+    content: "⋮⋮";
+    display: inline-block;
+    margin-right: 8px;
+    opacity: 0.65;
+    letter-spacing: -3px;
+}
+
+
+.hopper-field
+.hopper-drag-handle-active {
+    cursor: grabbing;
+}
+
+
+.hopper-field.hopper-dragging {
+    opacity: 0.45;
+}
+
+
+.hopper-drag-placeholder {
+    width: 100%;
+    border: 1px dashed rgba(155, 220, 255, 0.55);
+    border-radius: 8px;
+    margin: 8px 0;
+    box-sizing: border-box;
+}
