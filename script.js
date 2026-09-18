@@ -5772,13 +5772,20 @@ function calculateHopperVertexAngle(
     name2,
     distance,
     routeIndex
- ) {
+) {
 
     /*
      * =====================================================
      * PC ROUTE LINE
      * =====================================================
+     *
+     * Normal state:
+     *     Thin dotted/dashed line.
+     *
+     * Hover state:
+     *     Thick solid line.
      */
+
 
     const geometry =
         new THREE.BufferGeometry()
@@ -5788,12 +5795,27 @@ function calculateHopperVertexAngle(
             ]);
 
 
+    /*
+     * -----------------------------------------------------
+     * NORMAL DOTTED LINE
+     * -----------------------------------------------------
+     */
+
     const material =
-        new THREE.LineBasicMaterial({
+        new THREE.LineDashedMaterial({
+
             color: 0x9bdcff,
+
             transparent: true,
-            opacity: 0.035,
-            depthWrite: false
+
+            opacity: 0.75,
+
+            depthWrite: false,
+
+            dashSize: 0.35,
+
+            gapSize: 0.20
+
         });
 
 
@@ -5804,8 +5826,59 @@ function calculateHopperVertexAngle(
         );
 
 
+    /*
+     * LineDashedMaterial requires this.
+     */
+    line.computeLineDistances();
+
+
     scene.add(
         line
+    );
+
+
+    /*
+     * -----------------------------------------------------
+     * HIGHLIGHT LINE
+     * -----------------------------------------------------
+     *
+     * Same exact geometry.
+     *
+     * This remains hidden until the user hovers
+     * over the route segment.
+     */
+
+    const highlightGeometry =
+        geometry.clone();
+
+
+    const highlightMaterial =
+        new THREE.LineBasicMaterial({
+
+            color: 0x9bdcff,
+
+            transparent: true,
+
+            opacity: 0.95,
+
+            depthWrite: false
+
+        });
+
+
+    const highlightLine =
+        new THREE.Line(
+            highlightGeometry,
+            highlightMaterial
+        );
+
+
+    highlightLine.visible =
+        false;
+
+
+    scene.add(
+        highlightLine
     );
 
 
@@ -5942,10 +6015,19 @@ function calculateHopperVertexAngle(
     }
 
 
+    /*
+     * =====================================================
+     * ROUTE DATA
+     * =====================================================
+     */
+
     const data = {
 
         line:
             line,
+
+        highlightLine:
+            highlightLine,
 
         mobileLine:
             mobileLine,
@@ -5972,7 +6054,7 @@ function calculateHopperVertexAngle(
             routeIndex,
 
         baseOpacity:
-            0.035,
+            0.75,
 
         mobileBaseOpacity:
             0.65
@@ -5986,7 +6068,7 @@ function calculateHopperVertexAngle(
 
 
     return data;
- }
+}
 
 
  /*
@@ -6197,8 +6279,11 @@ function clearRouteLineHover() {
         hoveredRouteLine.data;
 
 
-    data.line.material.opacity =
-        data.baseOpacity;
+    data.line.visible =
+    true;
+
+    data.highlightLine.visible =
+    false;
 
 
     if (data.mobileHighlightLine) {
@@ -6318,10 +6403,17 @@ function setRouteLineHover(
 
 
     /*
-     * Make the desktop line clearly visible.
-     */
-    data.line.material.opacity =
-        0.85;
+ * Hide the thin dotted line.
+ */
+    data.line.visible =
+    false;
+
+
+    /*
+ * Show the thick solid highlight line.
+ */
+    data.highlightLine.visible =
+    true;
 
 
     hoveredRouteLine =
