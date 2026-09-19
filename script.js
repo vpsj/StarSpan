@@ -1286,6 +1286,258 @@ scene.add(
 );
 
 
+/* =====================================================
+   GALACTIC LONGITUDE MARKERS
+   ===================================================== */
+
+/*
+ * The circular grid represents the Galactic Plane.
+ *
+ * Galactic longitude:
+ *
+ *     0°   = Galactic Centre
+ *     90°  = direction of Galactic rotation
+ *     180° = Galactic Anticentre
+ *     270° = opposite direction of rotation
+ *
+ * We place labels every 30° around the outer edge.
+ *
+ * The labels are HTML elements rather than Three.js
+ * sprites so they remain crisp and readable.
+ */
+
+
+/*
+ * Direction corresponding to Galactic longitude 90°.
+ *
+ * The Galactic coordinate system is right-handed:
+ *
+ *     +X = Galactic Centre       (l = 0°)
+ *     +Y = Galactic North Pole  (b = +90°)
+ *     +Z = l = 90°
+ *
+ * Therefore:
+ *
+ *     Z = North × Galactic Centre
+ */
+const galacticLongitude90 =
+    galacticNorth
+        .clone()
+        .cross(
+            galacticCenterDirection
+        )
+        .normalize();
+
+
+/*
+ * Store all longitude labels so they can be
+ * repositioned every animation frame.
+ */
+const galacticLongitudeLabels = [];
+
+
+/*
+ * Place labels slightly OUTSIDE the circular grid.
+ *
+ * 1.06 means 6% beyond the grid radius.
+ */
+const longitudeLabelRadius =
+    planeRadius * 1.06;
+
+
+/*
+ * Create one label every 30°.
+ *
+ * 0° through 330°.
+ */
+for (
+    let longitude = 0;
+    longitude < 360;
+    longitude += 30
+) {
+
+    const angle =
+        longitude *
+        Math.PI /
+        180;
+
+
+    /*
+     * Position on the Galactic Plane.
+     *
+     * l = 0° points toward the Galactic Centre.
+     *
+     * l = 90° points in the direction of
+     * Galactic rotation.
+     */
+    const position =
+        galacticCenterDirection
+            .clone()
+            .multiplyScalar(
+                Math.cos(angle) *
+                longitudeLabelRadius
+            )
+            .add(
+                galacticLongitude90
+                    .clone()
+                    .multiplyScalar(
+                        Math.sin(angle) *
+                        longitudeLabelRadius
+                    )
+            );
+
+
+    const label =
+        document.createElement("div");
+
+
+    label.className =
+        "galactic-longitude-label";
+
+
+    label.textContent =
+        `${longitude}°`;
+
+
+    label.style.position =
+        "absolute";
+
+
+    label.style.transform =
+        "translate(-50%, -50%)";
+
+
+    label.style.pointerEvents =
+        "none";
+
+
+    container.appendChild(
+        label
+    );
+
+
+    galacticLongitudeLabels.push({
+
+        longitude:
+            longitude,
+
+        position:
+            position,
+
+        label:
+            label
+
+    });
+
+}
+
+
+/*
+ * =====================================================
+ * GALACTIC LONGITUDE TICK MARKS
+ * =====================================================
+ *
+ * Add a small physical tick at every 30° position.
+ *
+ * These sit directly on the edge of the circular
+ * Galactic Plane.
+ */
+for (
+    let longitude = 0;
+    longitude < 360;
+    longitude += 30
+) {
+
+    const angle =
+        longitude *
+        Math.PI /
+        180;
+
+
+    const innerRadius =
+        planeRadius * 0.97;
+
+
+    const outerRadius =
+        planeRadius * 1.01;
+
+
+    const inner =
+        galacticCenterDirection
+            .clone()
+            .multiplyScalar(
+                Math.cos(angle) *
+                innerRadius
+            )
+            .add(
+                galacticLongitude90
+                    .clone()
+                    .multiplyScalar(
+                        Math.sin(angle) *
+                        innerRadius
+                    )
+            );
+
+
+    const outer =
+        galacticCenterDirection
+            .clone()
+            .multiplyScalar(
+                Math.cos(angle) *
+                outerRadius
+            )
+            .add(
+                galacticLongitude90
+                    .clone()
+                    .multiplyScalar(
+                        Math.sin(angle) *
+                        outerRadius
+                    )
+            );
+
+
+    const geometry =
+        new THREE.BufferGeometry()
+            .setFromPoints([
+                inner,
+                outer
+            ]);
+
+
+    const material =
+        new THREE.LineBasicMaterial({
+            color: 0x78a8c8,
+            transparent: true,
+            opacity: 0.18,
+            depthWrite: false
+        });
+
+
+    const tick =
+        new THREE.Line(
+            geometry,
+            material
+        );
+
+
+    scene.add(
+        tick
+    );
+
+
+    /*
+     * Store for cleanup when the map is recreated.
+     */
+    galacticLongitudeLabels.push({
+
+        tick:
+            tick
+
+    });
+
+}
+
+
 /*
  * =====================================================
  * DEFAULT FRONT VIEW
@@ -1306,7 +1558,6 @@ scene.add(
  * The actual Galactic Plane and star coordinates
  * remain physically unchanged.
  */
-
 const planeViewAngle =
     30 * Math.PI / 180;
 
@@ -3998,21 +4249,78 @@ if (
 
 
         importantLabels.forEach(
-            updateLabel
-        );
+    updateLabel
+);
 
 
-        backgroundLabels.forEach(
-            updateLabel
-        );
+backgroundLabels.forEach(
+    updateLabel
+);
 
 
-        controls.update();
+/*
+ * =====================================================
+ * UPDATE GALACTIC LONGITUDE LABELS
+ * =====================================================
+ *
+ * Project each degree marker from 3D space onto
+ * the 2D screen.
+ */
+galacticLongitudeLabels.forEach(
+    data => {
 
-        renderer.render(
-            scene,
-            camera
-        );
+        /*
+         * Tick marks are Three.js objects and do not
+         * need HTML positioning.
+         */
+        if (!data.label) {
+            return;
+        }
+
+
+        const projected =
+            projectToScreen(
+                data.position
+            );
+
+
+        /*
+         * Hide the label when it is behind the camera.
+         */
+        if (
+            projected.z < -1 ||
+            projected.z > 1
+        ) {
+
+            data.label.style.display =
+                "none";
+
+            return;
+
+        }
+
+
+        data.label.style.display =
+            "block";
+
+
+        data.label.style.left =
+            `${projected.x}px`;
+
+
+        data.label.style.top =
+            `${projected.y}px`;
+
+    }
+);
+
+
+controls.update();
+
+renderer.render(
+    scene,
+    camera
+);
 
     }
 
@@ -4247,6 +4555,45 @@ importantLabels.forEach(
 backgroundLabels.forEach(
     data =>
         data.label.remove()
+);
+
+
+/*
+ * ---------------------------------------------------------
+ * GALACTIC LONGITUDE LABEL CLEANUP
+ * ---------------------------------------------------------
+ */
+
+galacticLongitudeLabels.forEach(
+    data => {
+
+        /*
+         * HTML degree label.
+         */
+        if (data.label) {
+
+            data.label.remove();
+
+        }
+
+
+        /*
+         * Three.js tick mark.
+         */
+        if (data.tick) {
+
+            scene.remove(
+                data.tick
+            );
+
+
+            data.tick.geometry.dispose();
+
+            data.tick.material.dispose();
+
+        }
+
+    }
 );
 
 

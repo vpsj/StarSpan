@@ -1427,3 +1427,28 @@ body {
     margin: 8px 0;
     box-sizing: border-box;
 }
+
+/* =========================================================
+   GALACTIC LONGITUDE LABELS
+   ========================================================= */
+
+.galactic-longitude-label {
+
+    color: rgba(155, 205, 240, 0.70);
+
+    font-size: 11px;
+
+    font-family:
+        Arial,
+        sans-serif;
+
+    white-space: nowrap;
+
+    text-shadow:
+        0 0 4px rgba(0, 0, 0, 0.95);
+
+    z-index: 5;
+
+    user-select: none;
+
+}
