@@ -308,24 +308,57 @@ function getSuggestions(query) {
     const normalizedQuery = normalize(query);
 
     /*
-     * Empty input shows a small default selection.
-     * Typing continues to use the full catalogue index.
+     * =====================================================
+     * EMPTY INPUT
+     * =====================================================
+     *
+     * Show ALL stars that have a proper name in the CSV.
+     *
+     * The list is sorted by distance, nearest first.
+     *
+     * IMPORTANT:
+     * There is NO .slice(0, 8) here.
+     *
+     * Therefore every star with a populated "proper"
+     * column is available in the default dropdown.
      */
     if (!normalizedQuery) {
 
         return stars
             .filter(star =>
+                cleanDisplay(star.proper) &&
                 Number.isFinite(star.dist) &&
                 star.dist > 0
             )
             .slice()
             .sort((a, b) =>
                 a.dist - b.dist
-            )
-            .slice(0, 8);
+            );
     }
 
 
+    /*
+     * =====================================================
+     * TYPED SEARCH
+     * =====================================================
+     *
+     * Once the user starts typing, use the complete
+     * search index exactly as before.
+     *
+     * This includes:
+     *
+     *     proper
+     *     HIP
+     *     HD
+     *     HR
+     *     Gl
+     *     BF
+     *     alt1
+     *     alt2
+     *     alt3
+     *
+     * Only the first 8 matching stars are displayed.
+     */
     const foundStars = new Set();
 
     const prefixMatches = [];
