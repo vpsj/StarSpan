@@ -1893,39 +1893,46 @@ function calculateHopperVertexAngle(
 
     /*
      * -----------------------------------------------------
-     * INVISIBLE INTERACTION LINE
+     * INTERACTION LINE
      * -----------------------------------------------------
      *
      * Keep the Line object so the existing raycaster can
      * still detect the route segment.
      *
-     * It is visually invisible because its opacity is 0.
+     *
      */
 
     const material =
-        new THREE.LineBasicMaterial({
+    new THREE.LineDashedMaterial({
 
-            color: 0x9bdcff,
+        color: 0x9bdcff,
 
-            transparent: true,
+        transparent: true,
 
-            opacity: 0,
+        opacity: 0.45,
 
-            depthWrite: false
+        depthWrite: false,
 
-        });
+        dashSize: 0.35,
 
+        gapSize: 0.20
 
-    const line =
-        new THREE.Line(
-            geometry,
-            material
-        );
+    });
 
 
-    scene.add(
-        line
+const line =
+    new THREE.Line(
+        geometry,
+        material
     );
+
+
+line.computeLineDistances();
+
+
+scene.add(
+    line
+);
 
 
     /*
@@ -1942,160 +1949,200 @@ function calculateHopperVertexAngle(
      */
 
     const arrowGroup =
-        new THREE.Group();
+    new THREE.Group();
 
 
-    const direction =
-        end.clone()
-            .sub(start);
+const direction =
+    end.clone()
+        .sub(start);
 
 
-    const length =
-        direction.length();
+const length =
+    direction.length();
 
 
-    const normalizedDirection =
-        direction.clone()
-            .normalize();
+const normalizedDirection =
+    direction.clone()
+        .normalize();
 
 
-    /*
-     * Number of arrows is based on segment length.
-     *
-     * Short segments get fewer arrows.
-     * Long segments get more.
-     */
-    const arrowCount =
-        Math.max(
-            3,
-            Math.min(
-                12,
-                Math.floor(
-                    length / 2
-                )
+/*
+ * -----------------------------------------------------
+ * DISTANCE-DEPENDENT ARROW SCALE
+ * -----------------------------------------------------
+ *
+ * This is deliberately SUB-LINEAR.
+ *
+ * A 500 ly route therefore does NOT get arrows
+ * 100 times larger than a 5 ly route.
+ *
+ * Longer routes get larger arrows, but the effect
+ * gradually levels off.
+ */
+const distanceArrowScale =
+    THREE.MathUtils.clamp(
+        Math.pow(
+            Math.max(
+                length,
+                1
+            ) / 25,
+            0.35
+        ),
+        0.75,
+        2.20
+    );
+
+
+/*
+ * -----------------------------------------------------
+ * NUMBER OF ARROWS
+ * -----------------------------------------------------
+ *
+ * Long routes get more arrows, but the number is capped.
+ */
+const arrowCount =
+    Math.max(
+        3,
+        Math.min(
+            12,
+            Math.floor(
+                length / 2
             )
-        );
-
-
-    const arrowLength =
-        THREE.MathUtils.clamp(
-            length * 0.035,
-            0.22,
-            0.65
-        );
-
-
-    const arrowRadius =
-        THREE.MathUtils.clamp(
-            arrowLength * 0.38,
-            0.09,
-            0.20
-        );
-
-
-    const arrowGeometry =
-        new THREE.ConeGeometry(
-            arrowRadius,
-            arrowLength,
-            6,
-            1,
-            false
-        );
-
-
-    const arrowMaterial =
-        new THREE.MeshBasicMaterial({
-
-            color: 0x9bdcff,
-
-            transparent: true,
-
-            opacity: 0.82,
-
-            depthWrite: false,
-
-            depthTest: false
-
-        });
-
-
-    /*
-     * ConeGeometry points along +Y.
-     *
-     * Rotate +Y into the actual route direction.
-     */
-    const arrowQuaternion =
-        new THREE.Quaternion();
-
-
-    arrowQuaternion.setFromUnitVectors(
-        new THREE.Vector3(0, 1, 0),
-        normalizedDirection
+        )
     );
 
 
-    /*
-     * Keep the first and last arrows away from
-     * the stars themselves.
-     */
-    const startFraction =
-        0.10;
-
-    const endFraction =
-        0.90;
-
-
-    for (
-        let i = 0;
-        i < arrowCount;
-        i++
-    ) {
-
-        const fraction =
-            startFraction +
-            (
-                (endFraction - startFraction) *
-                (
-                    i /
-                    Math.max(
-                        arrowCount - 1,
-                        1
-                    )
-                )
-            );
+/*
+ * -----------------------------------------------------
+ * BASE ARROW SIZE
+ * -----------------------------------------------------
+ *
+ * The actual size is adjusted every animation frame
+ * according to:
+ *
+ *     distance × zoom
+ */
+const baseArrowLength =
+    0.42;
 
 
-        const arrow =
-            new THREE.Mesh(
-                arrowGeometry,
-                arrowMaterial
-            );
+const baseArrowRadius =
+    0.16;
 
 
-        arrow.position.copy(
-            start.clone()
-                .lerp(
-                    end,
-                    fraction
-                )
-        );
-
-
-        arrow.quaternion.copy(
-            arrowQuaternion
-        );
-
-
-        arrowGroup.add(
-            arrow
-        );
-
-    }
-
-
-    scene.add(
-        arrowGroup
+const arrowGeometry =
+    new THREE.ConeGeometry(
+        baseArrowRadius,
+        baseArrowLength,
+        6,
+        1,
+        false
     );
+
+
+const arrowMaterial =
+    new THREE.MeshBasicMaterial({
+
+        color: 0x9bdcff,
+
+        transparent: true,
+
+        opacity: 0.82,
+
+        depthWrite: false,
+
+        /*
+         * This is important.
+         *
+         * It guarantees that the arrows are rendered
+         * directly on top of the thin route line.
+         */
+        depthTest: false
+
+    });
+
+
+/*
+ * ConeGeometry points along +Y.
+ *
+ * Rotate +Y into the route direction.
+ */
+const arrowQuaternion =
+    new THREE.Quaternion();
+
+
+arrowQuaternion.setFromUnitVectors(
+    new THREE.Vector3(0, 1, 0),
+    normalizedDirection
+);
+
+
+/*
+ * Store everything required by the animation loop.
+ */
+arrowGroup.userData.start =
+    start.clone();
+
+arrowGroup.userData.end =
+    end.clone();
+
+arrowGroup.userData.length =
+    length;
+
+arrowGroup.userData.distanceScale =
+    distanceArrowScale;
+
+
+/*
+ * Ten seconds for one complete journey.
+ *
+ * The arrows continuously wrap around from END
+ * back to START.
+ */
+arrowGroup.userData.cycleDuration =
+    10;
+
+
+for (
+    let i = 0;
+    i < arrowCount;
+    i++
+) {
+
+    const arrow =
+        new THREE.Mesh(
+            arrowGeometry,
+            arrowMaterial
+        );
+
+
+    /*
+     * Each arrow starts at a different point along
+     * the route.
+     */
+    arrow.userData.routeOffset =
+        i / arrowCount;
+
+
+    /*
+     * All arrows use exactly the same direction
+     * as the route itself.
+     */
+    arrow.quaternion.copy(
+        arrowQuaternion
+    );
+
+
+    arrowGroup.add(
+        arrow
+    );
+
+}
+
+
+scene.add(
+    arrowGroup
+);
 
 
     /*
@@ -2318,7 +2365,7 @@ function calculateHopperVertexAngle(
             routeIndex,
 
         baseOpacity:
-            0.75,
+            0.45,
 
         mobileBaseOpacity:
             0.65
@@ -2560,11 +2607,31 @@ function clearRouteLineHover() {
         hoveredRouteLine.data;
 
 
+    /*
+     * Restore the normal thin line.
+     *
+     * Keep it visible so it remains raycastable.
+     */
     data.line.visible =
-    true;
+        true;
+
+    data.line.material.opacity =
+        data.baseOpacity;
+
+
+    /*
+     * Restore the animated arrows.
+     */
+    if (data.arrowGroup) {
+
+        data.arrowGroup.visible =
+            true;
+
+    }
+
 
     data.highlightLine.visible =
-    false;
+        false;
 
 
     if (data.mobileHighlightLine) {
@@ -2683,17 +2750,35 @@ function setRouteLineHover(
     clearRouteLineHover();
 
 
-    /*
- * Hide the thin dotted line.
+  /*
+ * Keep the line object visible so the raycaster
+ * can continue detecting it.
+ *
+ * Only make its material invisible.
  */
-    data.line.visible =
-    false;
+data.line.visible =
+    true;
+
+data.line.material.opacity =
+    0;
 
 
-    /*
+/*
+ * Hide the animated arrows while the route segment
+ * is highlighted.
+ */
+if (data.arrowGroup) {
+
+    data.arrowGroup.visible =
+        false;
+
+}
+
+
+/*
  * Show the thick solid highlight line.
  */
-    data.highlightLine.visible =
+data.highlightLine.visible =
     true;
 
 
@@ -2932,17 +3017,72 @@ renderer.domElement.addEventListener(
  * This avoids performing a second raycast during
  * pointer-down.
  */
+/*
+ * ---------------------------------------------------------
+ * MOBILE DOUBLE-TAP FOCUS
+ * ---------------------------------------------------------
+ */
+
+let lastHopperTouchStar =
+    null;
+
+let lastHopperTouchTime =
+    0;
+
+let lastHopperTouchX =
+    0;
+
+let lastHopperTouchY =
+    0;
 
 function handleHopperPointerDown(
     event
 ) {
 
     /*
-     * Only handle mouse interaction.
+     * =====================================================
+     * DESKTOP
+     * =====================================================
+     *
+     * Keep the existing PC behaviour exactly as it is.
+     */
+    if (
+        event.pointerType ===
+        "mouse"
+    ) {
+
+        if (!hoveredVertex) {
+
+            return;
+
+        }
+
+
+        controls.target.copy(
+            hoveredVertex.vertex.position
+        );
+
+
+        controls.update();
+
+        return;
+
+    }
+
+
+    /*
+     * =====================================================
+     * MOBILE / TOUCH
+     * =====================================================
+     *
+     * Mobile does not have mousemove, so hoveredVertex
+     * is not available.
+     *
+     * Perform a direct raycast at the touch position.
      */
     if (
         event.pointerType !==
-        "mouse"
+        "touch"
     ) {
 
         return;
@@ -2950,10 +3090,128 @@ function handleHopperPointerDown(
     }
 
 
+    updateMousePosition(
+        event
+    );
+
+
+    raycaster.setFromCamera(
+        mouse,
+        camera
+    );
+
+
+    const vertexHits =
+        raycaster.intersectObjects(
+            interactiveVertices.map(
+                item => item.sprite
+            ),
+            false
+        );
+
+
     /*
-     * Nothing is currently being hovered.
+     * The touch was not on a Hopper star.
      */
-    if (!hoveredVertex) {
+    if (
+        vertexHits.length ===
+        0
+    ) {
+
+        lastHopperTouchStar =
+            null;
+
+        lastHopperTouchTime =
+            0;
+
+        return;
+
+    }
+
+
+    const hitObject =
+        vertexHits[0].object;
+
+
+    const hit =
+        interactiveVertices.find(
+            item =>
+                item.sprite ===
+                hitObject
+        );
+
+
+    if (!hit) {
+        return;
+    }
+
+
+    const now =
+        performance.now();
+
+
+    const timeSinceLastTap =
+        now -
+        lastHopperTouchTime;
+
+
+    const distanceFromLastTap =
+        Math.hypot(
+            event.clientX -
+                lastHopperTouchX,
+
+            event.clientY -
+                lastHopperTouchY
+        );
+
+
+    /*
+     * Two taps on the SAME star within 400 ms
+     * and within 40 screen pixels = double tap.
+     */
+    const isDoubleTap =
+        lastHopperTouchStar ===
+            hit.vertex.index &&
+
+        timeSinceLastTap <=
+            400 &&
+
+        distanceFromLastTap <=
+            40;
+
+
+    if (isDoubleTap) {
+
+        /*
+         * -------------------------------------------------
+         * FOCUS CAMERA
+         * -------------------------------------------------
+         */
+        controls.target.copy(
+            hit.vertex.position
+        );
+
+
+        controls.update();
+
+
+        /*
+         * Reset the double-tap state so a third tap
+         * starts a new double-tap sequence.
+         */
+        lastHopperTouchStar =
+            null;
+
+        lastHopperTouchTime =
+            0;
+
+
+        /*
+         * Do not let the second tap trigger another
+         * interaction.
+         */
+        event.preventDefault();
+
 
         return;
 
@@ -2961,19 +3219,19 @@ function handleHopperPointerDown(
 
 
     /*
-     * -----------------------------------------------------
-     * CHANGE CAMERA FOCUS
-     * -----------------------------------------------------
-     *
-     * Focus the camera on the exact route vertex
-     * currently under the mouse.
+     * Store this touch as the first tap.
      */
-    controls.target.copy(
-        hoveredVertex.vertex.position
-    );
+    lastHopperTouchStar =
+        hit.vertex.index;
 
+    lastHopperTouchTime =
+        now;
 
-    controls.update();
+    lastHopperTouchX =
+        event.clientX;
+
+    lastHopperTouchY =
+        event.clientY;
 
 }
 
@@ -3432,6 +3690,156 @@ if (hopperTooltip) {
     const elapsed =
         clock.getElapsedTime();
 
+    /*
+ * =====================================================
+ * ANIMATE HOPPER ROUTE ARROWS
+ * =====================================================
+ *
+ * Arrows continuously travel:
+ *
+ *     START → END
+ *
+ * and then wrap back to START.
+ *
+ * Arrow size is controlled by BOTH:
+ *
+ *     1. Distance of this particular hop
+ *     2. Current camera zoom
+ */
+
+routeLines.forEach(
+    function(data) {
+
+        if (!data.arrowGroup) {
+            return;
+        }
+
+
+        const arrowGroup =
+            data.arrowGroup;
+
+
+        const start =
+            arrowGroup.userData.start;
+
+        const end =
+            arrowGroup.userData.end;
+
+
+        const cycleDuration =
+            arrowGroup.userData.cycleDuration;
+
+
+        /*
+         * Infinite movement.
+         *
+         * 0 → 1 → 0 → 1 → ...
+         */
+        const movement =
+            (
+                elapsed /
+                cycleDuration
+            ) % 1;
+
+
+        /*
+         * -------------------------------------------------
+         * GLOBAL ZOOM SCALE
+         * -------------------------------------------------
+         *
+         * Use distance from the camera to the map centre
+         * rather than distance to each individual star.
+         *
+         * Therefore one far-away route does not get a
+         * completely different zoom factor simply because
+         * it happens to be located elsewhere in 3D space.
+         */
+        const currentCameraDistance =
+            camera.position.distanceTo(
+                mapCenter
+            );
+
+
+        const zoomRatio =
+            currentCameraDistance /
+            cameraDistance;
+
+
+        /*
+         * Zoomed OUT:
+         *     larger arrows
+         *
+         * Zoomed IN:
+         *     smaller arrows
+         *
+         * The exponent makes the change gradual rather
+         * than excessively aggressive.
+         */
+        const zoomScale =
+            THREE.MathUtils.clamp(
+                Math.pow(
+                    zoomRatio,
+                    0.65
+                ),
+                0.35,
+                2.00
+            );
+
+
+        /*
+         * Distance factor × zoom factor.
+         */
+        const finalScale =
+            arrowGroup.userData.distanceScale *
+            zoomScale;
+
+
+        /*
+         * -------------------------------------------------
+         * MOVE + SCALE EVERY ARROW
+         * -------------------------------------------------
+         */
+
+        arrowGroup.children.forEach(
+            function(arrow) {
+
+                /*
+                 * Add the common animation movement to
+                 * this arrow's individual starting offset.
+                 *
+                 * % 1 creates the infinite wrap-around.
+                 */
+                const routePosition =
+                    (
+                        arrow.userData.routeOffset +
+                        movement
+                    ) % 1;
+
+
+                /*
+                 * Put the arrow EXACTLY on the route line.
+                 */
+                arrow.position.lerpVectors(
+                    start,
+                    end,
+                    routePosition
+                );
+
+
+                /*
+                 * Apply:
+                 *
+                 *     distance × zoom
+                 */
+                arrow.scale.setScalar(
+                    finalScale
+                );
+
+            }
+        );
+
+    }
+);
 
     animatedStars.forEach(
         function(star) {
