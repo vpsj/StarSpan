@@ -1386,7 +1386,43 @@ body {
     }
 
 }
+/*
+ * =========================================================
+ * STAR HOPPER - START FROM SUN
+ * =========================================================
+ */
 
+.hopper-start-option {
+    margin: 2px 0 18px;
+}
+
+
+.hopper-start-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    color: rgba(220, 240, 255, 0.88);
+
+    font-size: 14px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    user-select: none;
+}
+
+
+.hopper-start-checkbox input {
+    width: 18px;
+    height: 18px;
+
+    margin: 0;
+
+    accent-color: #73d9f3;
+
+    cursor: pointer;
+}
 /*
  * =========================================================
  * STAR HOPPER - DRAG / REORDER

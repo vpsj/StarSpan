@@ -665,19 +665,41 @@ function getHopperRoute() {
 
     const route = [];
 
+
     /*
-     * Sol is always the default starting point.
+     * Sun is optional.
+     *
+     * If the checkbox is enabled, Sol becomes
+     * the first point in the route.
+     *
+     * If it is disabled, the first Hopper field
+     * becomes the starting point.
      */
-    const sol =
-        findStar("Sol");
+    const startFromSun =
+        document.getElementById(
+            "hopper-start-from-sun"
+        ).checked;
 
-    if (!sol) {
-        return {
-            error: "Sol could not be found in the star catalogue."
-        };
+
+    if (startFromSun) {
+
+        const sol =
+            findStar("Sol");
+
+
+        if (!sol) {
+
+            return {
+                error:
+                    "Sol could not be found in the star catalogue."
+            };
+
+        }
+
+
+        route.push(sol);
+
     }
-
-    route.push(sol);
 
 
     /*
@@ -718,10 +740,19 @@ function getHopperRoute() {
 
 
         /*
-         * If the user explicitly entered Sol as Star 1,
-         * don't create Sol → Sol.
+         * Remove ONLY an immediately repeated star.
          *
-         * This ONLY removes an immediately repeated star.
+         * This handles:
+         *
+         *     Start from Sun:
+         *     Sol → Sol
+         *
+         * as well as:
+         *
+         *     Star A → Star A
+         *
+         * without removing legitimate non-consecutive
+         * repeats.
          */
         if (
             route.length > 0 &&
@@ -744,7 +775,7 @@ function getHopperRoute() {
          *
          * Example:
          *
-         * Sol → Sirius → Betelgeuse → Sol → Procyon
+         * Star A → Star B → Star A → Star C
          *
          * is completely valid.
          */
@@ -787,9 +818,9 @@ function calculateHopperRoute() {
 
 
     /*
-     * A valid route needs at least one actual
-     * Hopper destination in addition to Sol.
-     */
+    * A valid route needs at least two stars
+    * so that there is at least one hop.
+    */
     if (route.length < 2) {
 
     const hopperResultElement =
@@ -797,7 +828,7 @@ function calculateHopperRoute() {
 
     hopperResultElement.innerHTML =
         '<span class="error">' +
-        'Please enter at least one destination star.' +
+        'Please enter at least two destination star.' +
         '</span>';
 
     return null;
@@ -1135,25 +1166,85 @@ function initializeHopperMap(route) {
     ).normalize();
 
     const galacticPlaneGroup =
-     new THREE.Group();
+    new THREE.Group();
 
-    const planeRadius =
-     Math.max(
+
+const planeRadius =
+    Math.max(
         20,
         ...positions.map(
             position => position.length()
         )
     ) * 1.20;
 
-    const planeMaterial =
-        new THREE.LineBasicMaterial({
+
+const planeMaterial =
+    new THREE.LineBasicMaterial({
         color: 0x78a8c8,
         transparent: true,
         opacity: 0.075,
         depthWrite: false
     });
 
-    const galacticPlaneObjects = [];
+
+const galacticPlaneObjects = [];
+
+
+/*
+ * =====================================================
+ * GALACTIC LONGITUDE MARKERS
+ * =====================================================
+ *
+ * The Galactic Plane uses the same coordinate system
+ * as the Star Distance Calculator.
+ *
+ * Galactic longitude:
+ *
+ *     0°   = Galactic Centre
+ *     90°  = direction of Galactic rotation
+ *     180° = Galactic Anticentre
+ *     270° = opposite direction of rotation
+ *
+ * Labels are placed every 30° around the outer edge.
+ */
+
+
+/*
+ * Direction corresponding to Galactic longitude 90°.
+ *
+ * The Galactic coordinate system is right-handed:
+ *
+ *     +X = Galactic Centre       (l = 0°)
+ *     +Y = Galactic North Pole  (b = +90°)
+ *     +Z = l = 90°
+ *
+ * Therefore:
+ *
+ *     Z = North × Galactic Centre
+ */
+const galacticLongitude90 =
+    galacticNorth
+        .clone()
+        .cross(
+            galacticCenterDirection
+        )
+        .normalize();
+
+
+/*
+ * Store the HTML labels so they can be
+ * repositioned every animation frame.
+ */
+const galacticLongitudeLabels = [];
+
+
+/*
+ * Place labels slightly outside the circular grid.
+ *
+ * 1.06 means 6% beyond the grid radius.
+ */
+const longitudeLabelRadius =
+    planeRadius * 1.06;
 
     function addPlaneLine(
    points,
@@ -1289,8 +1380,189 @@ function initializeHopperMap(route) {
 
     scene.add(
     galacticPlaneGroup
+);
+
+
+/*
+ * =====================================================
+ * GALACTIC LONGITUDE LABELS
+ * =====================================================
+ */
+
+for (
+    let longitude = 0;
+    longitude < 360;
+    longitude += 30
+) {
+
+    const angle =
+        longitude *
+        Math.PI /
+        180;
+
+
+    /*
+     * Position the label on the actual Galactic Plane.
+     *
+     * 0° points toward the Galactic Centre.
+     * 90° follows Galactic rotation.
+     */
+    const position =
+        galacticCenterDirection
+            .clone()
+            .multiplyScalar(
+                Math.cos(angle) *
+                longitudeLabelRadius
+            )
+            .add(
+                galacticLongitude90
+                    .clone()
+                    .multiplyScalar(
+                        Math.sin(angle) *
+                        longitudeLabelRadius
+                    )
+            );
+
+
+    const label =
+        document.createElement("div");
+
+
+    label.className =
+        "galactic-longitude-label";
+
+
+    label.textContent =
+        `${longitude}°`;
+
+
+    label.style.position =
+        "absolute";
+
+
+    label.style.transform =
+        "translate(-50%, -50%)";
+
+
+    label.style.pointerEvents =
+        "none";
+
+
+    container.appendChild(
+        label
     );
-  /*
+
+
+    galacticLongitudeLabels.push({
+
+        longitude:
+            longitude,
+
+        position:
+            position,
+
+        label:
+            label
+
+    });
+
+}
+
+
+/*
+ * =====================================================
+ * GALACTIC LONGITUDE TICK MARKS
+ * =====================================================
+ *
+ * Small physical ticks at every 30° position.
+ */
+
+for (
+    let longitude = 0;
+    longitude < 360;
+    longitude += 30
+) {
+
+    const angle =
+        longitude *
+        Math.PI /
+        180;
+
+
+    const innerRadius =
+        planeRadius * 0.97;
+
+
+    const outerRadius =
+        planeRadius * 1.01;
+
+
+    const inner =
+        galacticCenterDirection
+            .clone()
+            .multiplyScalar(
+                Math.cos(angle) *
+                innerRadius
+            )
+            .add(
+                galacticLongitude90
+                    .clone()
+                    .multiplyScalar(
+                        Math.sin(angle) *
+                        innerRadius
+                    )
+            );
+
+
+    const outer =
+        galacticCenterDirection
+            .clone()
+            .multiplyScalar(
+                Math.cos(angle) *
+                outerRadius
+            )
+            .add(
+                galacticLongitude90
+                    .clone()
+                    .multiplyScalar(
+                        Math.sin(angle) *
+                        outerRadius
+                    )
+            );
+
+
+    const geometry =
+        new THREE.BufferGeometry()
+            .setFromPoints([
+                inner,
+                outer
+            ]);
+
+
+    const material =
+        new THREE.LineBasicMaterial({
+            color: 0x78a8c8,
+            transparent: true,
+            opacity: 0.18,
+            depthWrite: false
+        });
+
+
+    const tick =
+        new THREE.Line(
+            geometry,
+            material
+        );
+
+
+    scene.add(
+        tick
+    );
+
+}
+
+
+/*
  * ---------------------------------------------------------
  * STAR TEXTURE
  * ---------------------------------------------------------
@@ -1597,9 +1869,14 @@ function initializeHopperMap(route) {
  * Create one sprite for every point in the
  * Hopper route.
  *
- * Sol is always route[0].
+ * Sol receives the special Sol appearance only
+ * when Sol is actually present in the route.
  */
- route.forEach(
+const solStar =
+    findStar("Sol");
+
+
+route.forEach(
     (star, index) => {
 
         addStar(
@@ -1608,14 +1885,14 @@ function initializeHopperMap(route) {
 
             positions[index].length(),
 
-            index === 0,
+            star === solStar,
 
             getStarName(star)
 
         );
 
     }
- );
+);
 
 
  /*
@@ -3408,21 +3685,37 @@ renderer.domElement.addEventListener(
              * Remove HTML labels.
              */
             importantLabels.forEach(
-                function(data) {
+    function(data) {
 
-                    if (data.label) {
+        if (data.label) {
 
-                        data.label.remove();
+            data.label.remove();
 
-                    }
+        }
 
-                }
-            );
+    }
+);
 
 
-            /*
-             * Dispose Three.js controls.
-             */
+/*
+ * Remove Galactic longitude HTML labels.
+ */
+galacticLongitudeLabels.forEach(
+    function(data) {
+
+        if (data.label) {
+
+            data.label.remove();
+
+        }
+
+    }
+);
+
+
+/*
+ * Dispose Three.js controls.
+ */
             controls.dispose();
 
 
@@ -3666,7 +3959,44 @@ if (hopperTooltip) {
     }
 
  }
+/* =====================================================
+   GALACTIC LONGITUDE LABEL POSITIONING
+   ===================================================== */
 
+function updateGalacticLongitudeLabels() {
+
+    galacticLongitudeLabels.forEach(
+        function(data) {
+
+            const projected =
+                projectToScreen(
+                    data.position
+                );
+
+            if (
+                projected.z < -1 ||
+                projected.z > 1
+            ) {
+
+                data.label.style.display =
+                    "none";
+
+                return;
+            }
+
+            data.label.style.display =
+                "block";
+
+            data.label.style.left =
+                `${projected.x}px`;
+
+            data.label.style.top =
+                `${projected.y}px`;
+
+        }
+    );
+
+}
 
  /* =====================================================
    ANIMATION
@@ -3913,17 +4243,20 @@ routeLines.forEach(
 
 
     importantLabels.forEach(
-        updateLabel
-    );
+    updateLabel
+);
 
 
-    controls.update();
+updateGalacticLongitudeLabels();
 
 
-    renderer.render(
-        scene,
-        camera
-    );
+controls.update();
+
+
+renderer.render(
+    scene,
+    camera
+);
 
  }
 
